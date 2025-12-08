@@ -45,6 +45,14 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   flutter_dotenv: ^6.0.0
+  wakelock_plus: ^1.4.0
+  audioplayers: ^6.5.1
+  url_launcher: ^6.3.2
+  hydrated_bloc: ^9.1.2
+  path_provider: ^2.1.1
+  json_annotation: ^4.8.1
+  json_serializable: ^6.7.1 # dev_dependency
+  build_runner: ^2.4.6      # dev_dependency
 
 dev_dependencies:
   flutter_test:
@@ -70,8 +78,8 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - ./keys/.env
-
+    - keys/env/.env
+    - assets/sounds/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
