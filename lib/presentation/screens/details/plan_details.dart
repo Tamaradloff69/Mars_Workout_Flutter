@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mars_workout_app/data/models/training_plan.dart';
+import 'package:mars_workout_app/data/repositories/workout_repository.dart'; // Import Repository
 import 'package:mars_workout_app/logic/bloc/plan/plan_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_event.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_state.dart';
 import 'package:mars_workout_app/presentation/screens/workout/workout_detail_screen.dart';
+import 'package:mars_workout_app/presentation/screens/workout/workout_selection.dart';
 
 class PlanDetailScreen extends StatelessWidget {
   final TrainingPlan plan;
@@ -45,9 +47,9 @@ class PlanDetailScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.primaryColor.withValues(alpha: 0.1),
+                    color: theme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: theme.primaryColor.withValues(alpha: 0.2)),
+                    border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
                   ),
                   child: Text(
                     "You are currently working on this plan.",
@@ -66,7 +68,6 @@ class PlanDetailScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 final week = plan.weeks[index];
                 return Theme(
-                  // Remove divider lines from expansion tiles for cleaner look
                   data: theme.copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
                     title: Text(
@@ -83,24 +84,44 @@ class PlanDetailScreen extends StatelessWidget {
                             contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
                             leading: Icon(
                               isComplete ? Icons.check_circle : Icons.circle_outlined,
-                              // Use theme colors where possible
                               color: isComplete ? Colors.green : theme.disabledColor,
                             ),
                             title: Text(day.title, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
                             subtitle: Text(day.workout.title, style: theme.textTheme.bodyMedium),
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider.value(
-                                    value: BlocProvider.of<PlanBloc>(context),
-                                    child: WorkoutDetailScreen(
-                                      workout: day.workout,
-                                      planDayId: day.id,
+                              // --- LOGIC CHANGE HERE ---
+                              // Check if this is a "Choice" workout based on title convention
+                              // In a real app, you might use a specific 'type' field in the model.
+                              if (day.title.contains("Choice")) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BlocProvider.value(
+                                      value: BlocProvider.of<PlanBloc>(context),
+                                      child: WorkoutSelectionScreen(
+                                        title: day.title,
+                                        planDayId: day.id,
+                                        // Fetch specific options. Currently hardcoded to PowerHour for this example.
+                                        options: getPowerHourOptions(),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
+                                );
+                              } else {
+                                // Standard Navigation
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BlocProvider.value(
+                                      value: BlocProvider.of<PlanBloc>(context),
+                                      child: WorkoutDetailScreen(
+                                        workout: day.workout,
+                                        planDayId: day.id,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
                             },
                           );
                         },
