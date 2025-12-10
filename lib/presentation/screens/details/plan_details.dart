@@ -13,16 +13,21 @@ class PlanDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(title: Text(plan.title)),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(plan.description, style: Theme.of(context).textTheme.bodyLarge),
+            padding: const EdgeInsets.all(20.0),
+            child: Text(
+              plan.description,
+              style: theme.textTheme.bodyLarge,
+            ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: BlocBuilder<PlanBloc, PlanState>(
               builder: (context, state) {
                 if (state.activePlanId != plan.id) {
@@ -36,48 +41,72 @@ class PlanDetailScreen extends StatelessWidget {
                     ),
                   );
                 }
-                return const SizedBox.shrink(); // Already started
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: theme.primaryColor.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    "You are currently working on this plan.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.w600),
+                  ),
+                );
               },
             ),
           ),
+          const SizedBox(height: 16),
           Expanded(
             child: ListView.builder(
+              padding: const EdgeInsets.only(bottom: 20),
               itemCount: plan.weeks.length,
               itemBuilder: (context, index) {
                 final week = plan.weeks[index];
-                return ExpansionTile(
-                  title: Text("Week ${week.weekNumber}"),
-                  initiallyExpanded: index == 0, // Open first week by default
-                  children: week.days.map((day) {
-                    return BlocBuilder<PlanBloc, PlanState>(
-                      builder: (context, state) {
-                        final isComplete = state.completedDayIds.contains(day.id);
+                return Theme(
+                  // Remove divider lines from expansion tiles for cleaner look
+                  data: theme.copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    title: Text(
+                      "Week ${week.weekNumber}",
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    initiallyExpanded: index == 0,
+                    children: week.days.map((day) {
+                      return BlocBuilder<PlanBloc, PlanState>(
+                        builder: (context, state) {
+                          final isComplete = state.completedDayIds.contains(day.id);
 
-                        return ListTile(
-                          leading: Icon(
-                            isComplete ? Icons.check_circle : Icons.circle_outlined,
-                            color: isComplete ? Colors.green : Colors.grey,
-                          ),
-                          title: Text(day.title),
-                          subtitle: Text(day.workout.title),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BlocProvider.value(
-                                  value: BlocProvider.of<PlanBloc>(context),
-                                  child: WorkoutDetailScreen(
-                                    workout: day.workout,
-                                    planDayId: day.id,
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                            leading: Icon(
+                              isComplete ? Icons.check_circle : Icons.circle_outlined,
+                              // Use theme colors where possible
+                              color: isComplete ? Colors.green : theme.disabledColor,
+                            ),
+                            title: Text(day.title, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                            subtitle: Text(day.workout.title, style: theme.textTheme.bodyMedium),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BlocProvider.value(
+                                    value: BlocProvider.of<PlanBloc>(context),
+                                    child: WorkoutDetailScreen(
+                                      workout: day.workout,
+                                      planDayId: day.id,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  }).toList(),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    }).toList(),
+                  ),
                 );
               },
             ),

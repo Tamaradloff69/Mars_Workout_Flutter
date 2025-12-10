@@ -27,6 +27,7 @@ class MyApp extends StatelessWidget {
         title: 'Workout Planner',
         darkTheme: AppTheme.lightTheme,
         theme: AppTheme.lightTheme,
+        debugShowCheckedModeBanner: false,
         home: const HomePage(),
         // Define your routes for timer/details here...
       ),

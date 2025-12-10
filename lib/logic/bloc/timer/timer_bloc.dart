@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:bloc/bloc.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
 import 'timer_event.dart';
 import 'timer_state.dart';

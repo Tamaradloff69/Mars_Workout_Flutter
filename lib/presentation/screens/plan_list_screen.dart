@@ -11,85 +11,101 @@ class PlanListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final plans = WorkoutRepository().getAllPlans();
+    final theme = Theme.of(context);
 
-    return BlocBuilder<PlanBloc, PlanState>(
-      builder: (context, state) {
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: plans.length,
-          itemBuilder: (context, index) {
-            final plan = plans[index];
-            // Calculate progress using the hydrated state
-            final progress = plan.calculateProgress(state.completedDayIds);
-            final isActive = state.activePlanId == plan.id;
-
-            return Card(
-              elevation: isActive ? 4 : 1,
-              shape: RoundedRectangleBorder(
-                side: isActive
-                    ? const BorderSide(color: Colors.blue, width: 2)
-                    : BorderSide.none,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.only(bottom: 16),
-              child: InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PlanDetailScreen(plan: plan),
+    return SafeArea(
+      child: BlocBuilder<PlanBloc, PlanState>(
+        builder: (context, state) {
+          return ListView.separated(
+            padding: const EdgeInsets.all(20),
+            itemCount: plans.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              final plan = plans[index];
+              final progress = plan.calculateProgress(state.completedDayIds);
+              final isActive = state.activePlanId == plan.id;
+              return Card(
+                surfaceTintColor: progress * 100 == 100 ? theme.colorScheme.tertiary.withValues(alpha: 0.2) : null,
+                shadowColor: null,
+                shape: progress * 100 == 100
+                    ? RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: theme.colorScheme.tertiary, width: 2),
+                      )
+                    : isActive
+                    ? RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: theme.primaryColor, width: 2),
+                      )
+                    : null, // Falls back to AppTheme
+                elevation: progress * 100 == 100 || isActive ? 2 : 0,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => PlanDetailScreen(plan: plan)));
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(child: Text(plan.title, style: theme.textTheme.titleLarge)),
+                            if (progress * 100 == 100) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(color: theme.colorScheme.tertiary.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(20)),
+                                child: Text(
+                                  "Complete",
+                                  style: TextStyle(color: theme.colorScheme.tertiary, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ] else if (isActive)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(color: theme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                                child: Text(
+                                  "Active",
+                                  style: TextStyle(color: theme.primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(plan.description, style: theme.textTheme.bodyMedium),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: progress,
+                                  backgroundColor: theme.colorScheme.surface,
+                                  color: progress * 100 == 100
+                                      ? theme.colorScheme.tertiary
+                                      : isActive
+                                      ? theme.primaryColor
+                                      : Colors.grey,
+                                  minHeight: 6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text("${(progress * 100).toInt()}%", style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ],
                     ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              plan.title,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                          ),
-                          if (isActive)
-                            const Chip(
-                              label: Text("Active", style: TextStyle(color: Colors.white)),
-                              backgroundColor: Colors.blue,
-                              padding: EdgeInsets.zero,
-                              visualDensity: VisualDensity.compact,
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(plan.description, style: Theme.of(context).textTheme.bodyMedium),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              backgroundColor: Colors.grey[200],
-                              color: isActive ? Colors.blue : Colors.grey,
-                              minHeight: 8,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text("${(progress * 100).toInt()}%"),
-                        ],
-                      ),
-                    ],
                   ),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
