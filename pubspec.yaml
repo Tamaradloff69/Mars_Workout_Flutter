@@ -53,6 +53,8 @@ dependencies:
   json_annotation: ^4.8.1
   json_serializable: ^6.7.1 # dev_dependency
   build_runner: ^2.4.6      # dev_dependency
+  responsive_sizer: ^3.3.1
+  lottie: ^3.3.2
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +82,7 @@ flutter:
   assets:
     - keys/env/.env
     - assets/sounds/
+    - assets/lottie/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

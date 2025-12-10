@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
-import 'timer_event.dart';
-import 'timer_state.dart';
+import 'package:mars_workout_app/logic/bloc/timer/timer_event.dart';
+import 'package:mars_workout_app/logic/bloc/timer/timer_state.dart';
 
 class TimerBloc extends Bloc<TimerEvent, TimerState> {
   StreamSubscription<int>? _tickerSubscription;
@@ -40,22 +40,47 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     emit(TimerState.initial(state.stages));
   }
 
-  void _onNextStage(NextStage event, Emitter<TimerState> emit) {
-    if (state.isLastStage) {
-      // This can signify the end of the workout
-      _tickerSubscription?.cancel();
-      emit(state.copyWith(isRunning: false, elapsed: state.currentStage.duration)); // Mark as finished
+  // Inside _onTimerTicked method:
+
+  void _onTimerTicked(TimerTicked event, Emitter<TimerState> emit) {
+    const int prepDurationSeconds = 5; // 5 Seconds "Get Ready" time
+
+    // 1. Handle "Get Ready" Phase
+    if (state.isPrep) {
+      if (state.elapsed.inSeconds >= prepDurationSeconds) {
+        // Prep is done! Switch to Work.
+        emit(state.copyWith(isPrep: false, elapsed: Duration.zero));
+      } else {
+        // Continue Prep countdown
+        emit(state.copyWith(elapsed: event.elapsed));
+      }
       return;
     }
 
-    emit(state.copyWith(currentStageIndex: state.currentStageIndex + 1, elapsed: Duration.zero));
-  }
-
-  void _onTimerTicked(TimerTicked event, Emitter<TimerState> emit) {
+    // 2. Handle "Work" Phase
     if (event.elapsed >= state.currentStage.duration) {
-      add(NextStage()); // Auto-advance to next stage
+      add(NextStage());
     } else {
       emit(state.copyWith(elapsed: event.elapsed));
     }
+  }
+
+// Inside _onNextStage method:
+  void _onNextStage(NextStage event, Emitter<TimerState> emit) {
+    if (state.isLastStage) {
+      _tickerSubscription?.cancel();
+      // Force elapsed to duration so UI shows 100% complete before navigating
+      emit(state.copyWith(isRunning: false, elapsed: state.currentStage.duration));
+      return;
+    }
+
+    // Move to next stage, BUT start in "Prep" mode again
+    // Exception: If next stage is "Rest", maybe skip prep?
+    // For now, let's keep it simple: Prep before everything.
+    emit(state.copyWith(
+      currentStageIndex: state.currentStageIndex + 1,
+      elapsed: Duration.zero,
+      isPrep: true, // Reset to Get Ready mode
+    ));
   }
 }

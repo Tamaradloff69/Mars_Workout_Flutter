@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
@@ -9,6 +8,7 @@ import 'package:mars_workout_app/logic/bloc/plan/plan_event.dart';
 import 'package:mars_workout_app/logic/bloc/timer/timer_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/timer/timer_event.dart';
 import 'package:mars_workout_app/logic/bloc/timer/timer_state.dart';
+import 'package:mars_workout_app/presentation/screens/workout/workout_completion_screen.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
@@ -51,8 +51,21 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         body: BlocListener<TimerBloc, TimerState>(
           listener: (context, state) {
             if (state.isFinished) {
+
               context.read<PlanBloc>().add(MarkDayAsCompleted(widget.planDayId));
-              Navigator.pop(context);
+
+              // Calculate total minutes for the summary
+              int totalMins = 0;
+              for (var s in widget.workout.stages) {
+                totalMins += s.duration.inMinutes;
+              }
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => WorkoutCompletedScreen(
+                  workoutTitle: widget.workout.title,
+                  totalMinutes: totalMins,
+                )),
+              );
             }
           },
           child: Column(
@@ -98,7 +111,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 20,
                         offset: const Offset(0, -5),
                       )
@@ -194,24 +207,50 @@ class _LinearTimerDisplay extends StatelessWidget {
 
     return BlocBuilder<TimerBloc, TimerState>(
       builder: (context, state) {
-        final totalSeconds = state.currentStage.duration.inSeconds;
-        final elapsedSeconds = state.elapsed.inSeconds;
-        // Linear Progress: 0.0 to 1.0 (fills up)
-        double progress = totalSeconds > 0 ? (elapsedSeconds / totalSeconds) : 0.0;
 
-        final duration = state.currentStage.duration - state.elapsed;
-        final minutes = (duration.inSeconds / 60).floor().toString().padLeft(2, '0');
-        final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+        // --- LOGIC: Are we Prepping or Working? ---
+        final isPrep = state.isPrep;
+        final maxDuration = isPrep
+            ? const Duration(seconds: 5)
+            : state.currentStage.duration;
+
+        final timeLeft = maxDuration - state.elapsed;
+
+        // Ensure we don't show negative numbers
+        final secondsDisplay = timeLeft.inSeconds < 0 ? 0 : timeLeft.inSeconds;
+
+        // Color Logic
+        final displayColor = isPrep ? Colors.orange : theme.primaryColor;
+        final labelText = isPrep ? "GET READY" : "WORK";
+
+        // Progress Bar Calculation
+        double progress = 0.0;
+        if (maxDuration.inSeconds > 0) {
+          progress = state.elapsed.inSeconds / maxDuration.inSeconds;
+        }
 
         return Column(
           children: [
+            // "GET READY" Label
+            Text(
+              labelText,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: displayColor,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2.0,
+              ),
+            ),
+            const SizedBox(height: 8),
+
             // Big Countdown Text
             Text(
-              '$minutes:$seconds',
+              isPrep
+                  ? "$secondsDisplay" // Just seconds for prep
+                  : '${(secondsDisplay / 60).floor().toString().padLeft(2, '0')}:${(secondsDisplay % 60).toString().padLeft(2, '0')}',
               style: theme.textTheme.displayLarge?.copyWith(
                 fontSize: 80,
                 fontWeight: FontWeight.w800,
-                color: theme.textTheme.bodyLarge?.color,
+                color: displayColor, // Change text color based on state
                 height: 1.0,
                 fontFeatures: [const FontFeature.tabularFigures()],
               ),
@@ -224,9 +263,9 @@ class _LinearTimerDisplay extends StatelessWidget {
               child: SizedBox(
                 height: 12,
                 child: LinearProgressIndicator(
-                  value: progress,
+                  value: progress, // Fills up
                   backgroundColor: Colors.grey.shade100,
-                  color: progress > 0.8 ? theme.colorScheme.error : theme.primaryColor,
+                  color: displayColor,
                 ),
               ),
             ),

@@ -4,58 +4,166 @@ import 'package:mars_workout_app/data/models/workout_model.dart';
 
 TrainingPlan kettlebellPlan() {
   return TrainingPlan(
-    id: 'kettlebell_12_week',
-    title: '12-Week Kettlebell Program',
-    workoutType: WorkoutType.kettleBell, //
-    description: 'Build strength and power with this kettlebell program.',
+    id: 'kettlebell_simple_sinister',
+    title: 'Kettlebell: Simple & Sinister',
+    workoutType: WorkoutType.kettleBell,
+    description: 'A minimalist program based on ladders and EMOM (Every Minute on the Minute) circuits.',
     difficulty: 'Intermediate',
     weeks: List.generate(12, (weekIndex) {
+      int weekNum = weekIndex + 1;
+
+      // Progression Logic:
+      // Weeks 1-4: Foundation (Longer Rests)
+      // Weeks 5-8: Endurance (Shorter Rests)
+      // Weeks 9-12: Power (More Rounds)
+
       return PlanWeek(
-        weekNumber: weekIndex + 1,
-        days: List.generate(3, (dayIndex) {
-          return PlanDay(
-            id: 'kettlebell_w${weekIndex + 1}_d${dayIndex + 1}',
-            title: 'Full Body Strength',
-            workout: Workout(
-              title: 'Kettlebell Swings & Goblet Squats',
-              description: 'Focus on explosive power.',
-              stages: [
-                // --- SPLIT WARM-UP ---
-                const WorkoutStage(
-                    name: 'Warm-up: Halos',
-                    duration: Duration(minutes: 3),
-                    description: 'Circle the bell around your head. Keep core tight. Alternating directions.'
-                ),
-                const WorkoutStage(
-                    name: 'Warm-up: Slingshots',
-                    duration: Duration(minutes: 3),
-                    description: 'Pass the bell around your waist to engage the core. Keep hips stable.'
-                ),
-                const WorkoutStage(
-                    name: 'Warm-up: Lunges',
-                    duration: Duration(minutes: 4),
-                    description: 'Bodyweight lunges to mobilize hips and knees.'
-                ),
-                // ---------------------
-                const WorkoutStage(
-                    name: 'Main Circuit',
-                    duration: Duration(minutes: 20),
-                    description: 'Ladder: 5 Swings/5 Squats, rest 30s. Then 10/10. Then 15/15. Repeat.'
-                ),
-                const WorkoutStage(
-                    name: 'Cool-down',
-                    duration: Duration(minutes: 5),
-                    description: 'Static stretching focusing on hamstrings.'
-                ),
-              ],
-            ),
-          );
-        }),
+        weekNumber: weekNum,
+        days: [
+          // DAY 1: The Swing Ladder
+          PlanDay(
+            id: 'kb_w${weekNum}_d1',
+            title: 'Swing Ladder',
+            workout: _swingLadderWorkout(weekNum),
+          ),
+          // DAY 2: The "Armor Building" Circuit
+          PlanDay(
+            id: 'kb_w${weekNum}_d2',
+            title: 'Armor Building Circuit',
+            workout: _armorBuildingCircuit(weekNum),
+          ),
+          // DAY 3: Conditioning Flow
+          PlanDay(
+            id: 'kb_w${weekNum}_d3',
+            title: 'Full Body Flow',
+            workout: _fullBodyFlow(weekNum),
+          ),
+        ],
       );
     }),
   );
 }
 
+// --- WORKOUT 1: The "Ladder" (10 down to 1) ---
+Workout _swingLadderWorkout(int week) {
+  // Advanced logic: Add more volume as weeks progress
+  int startReps = (week > 6) ? 15 : 10;
+
+  List<WorkoutStage> ladderStages = [];
+
+  // Warmup
+  ladderStages.add(const WorkoutStage(name: 'Warm-up: Halos', duration: Duration(minutes: 2), description: ' loosen up shoulders.'));
+
+  // The Ladder Loop
+  for (int i = startReps; i >= 2; i -= 2) { // 10, 8, 6, 4, 2
+    ladderStages.add(WorkoutStage(
+        name: '$i x KB Swings',
+        duration: const Duration(seconds: 45),
+        description: 'Perform $i explosive swings. Hinge deeply.'
+    ));
+    ladderStages.add(WorkoutStage(
+        name: '$i x Goblet Squats',
+        duration: const Duration(seconds: 45),
+        description: 'Perform $i deep squats. Elbows inside knees.'
+    ));
+    ladderStages.add(const WorkoutStage(
+        name: 'Rest',
+        duration: Duration(seconds: 30),
+        description: 'Shake it off.'
+    ));
+  }
+
+  ladderStages.add(const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 3)));
+
+  return Workout(
+    title: 'Swing & Squat Ladder',
+    description: 'Perform Swings and Squats in a descending ladder ($startReps down to 2). High intensity.',
+    stages: ladderStages,
+  );
+}
+
+// --- WORKOUT 2: The "Armor Building" (EMOM Style) ---
+Workout _armorBuildingCircuit(int week) {
+  int rounds = (week > 4) ? 5 : 3;
+
+  return Workout(
+    title: 'Armor Building',
+    description: '2 Cleans, 1 Press, 3 Squats. Repeat for rounds.',
+    stages: [
+      const WorkoutStage(name: 'Warm-up: Halos', duration: Duration(minutes: 2)),
+      for(int i=1; i<=rounds; i++) ...[
+        const WorkoutStage(
+            name: '2 Cleans (Left)',
+            duration: Duration(seconds: 20),
+            description: 'Clean to rack position.'
+        ),
+        const WorkoutStage(
+            name: '1 Overhead Press (Left)',
+            duration: Duration(seconds: 15),
+            description: 'Strict press overhead.'
+        ),
+        const WorkoutStage(
+            name: '3 Goblet Squats',
+            duration: Duration(seconds: 30),
+            description: 'Deep squats.'
+        ),
+        // Switch Sides
+        const WorkoutStage(
+            name: '2 Cleans (Right)',
+            duration: Duration(seconds: 20),
+            description: 'Switch hands.'
+        ),
+        const WorkoutStage(
+            name: '1 Overhead Press (Right)',
+            duration: Duration(seconds: 15),
+            description: 'Strict press overhead.'
+        ),
+        const WorkoutStage(
+            name: 'Rest',
+            duration: Duration(minutes: 1),
+            description: 'Recover fully before next round.'
+        ),
+      ],
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 3)),
+    ],
+  );
+}
+
+// --- WORKOUT 3: Full Body Flow (Lunges & Deadlifts) ---
+Workout _fullBodyFlow(int week) {
+  return Workout(
+      title: 'Legs & Lungs',
+      description: 'Lunges and Deadlifts for lower body power.',
+      stages: [
+        const WorkoutStage(name: 'Warm-up: Halos', duration: Duration(minutes: 2)),
+
+        // Circuit x 3
+        for(int i=0; i<3; i++) ...[
+          const WorkoutStage(
+              name: 'Reverse Lunge (Left)',
+              duration: Duration(seconds: 40),
+              description: 'Step back, tap knee gently.'
+          ),
+          const WorkoutStage(
+              name: 'Reverse Lunge (Right)',
+              duration: Duration(seconds: 40),
+              description: 'Keep chest up.'
+          ),
+          const WorkoutStage(
+              name: 'KB Deadlift',
+              duration: Duration(seconds: 60),
+              description: 'Heavy hinge movement. Flat back.'
+          ),
+          const WorkoutStage(
+              name: 'Rest',
+              duration: Duration(seconds: 45),
+              description: 'Shake out legs.'
+          ),
+        ],
+        const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)),
+      ]
+  );
+}
 // --- NEW PLAN: Plan 015 (Video based) ---
 TrainingPlan plan015KettlebellProgram() {
   return TrainingPlan(
