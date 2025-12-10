@@ -31,17 +31,11 @@ class PlanBloc extends HydratedBloc<PlanEvent, PlanState> {
 
   @override
   PlanState? fromJson(Map<String, dynamic> json) {
-    return PlanState(
-      activePlanId: json['activePlanId'],
-      completedDayIds: List<String>.from(json['completedDayIds'] ?? []),
-    );
+    return PlanState(activePlanId: json['activePlanId'], completedDayIds: List<String>.from(json['completedDayIds'] ?? []));
   }
 
   @override
   Map<String, dynamic>? toJson(PlanState state) {
-    return {
-      'activePlanId': state.activePlanId,
-      'completedDayIds': state.completedDayIds,
-    };
+    return {'activePlanId': state.activePlanId, 'completedDayIds': state.completedDayIds};
   }
 }

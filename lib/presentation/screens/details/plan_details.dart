@@ -23,10 +23,7 @@ class PlanDetailScreen extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(20.0),
-            child: Text(
-              plan.description,
-              style: theme.textTheme.bodyLarge,
-            ),
+            child: Text(plan.description, style: theme.textTheme.bodyLarge),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -70,10 +67,7 @@ class PlanDetailScreen extends StatelessWidget {
                 return Theme(
                   data: theme.copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
-                    title: Text(
-                      "Week ${week.weekNumber}",
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    title: Text("Week ${week.weekNumber}", style: theme.textTheme.titleMedium),
                     initiallyExpanded: index == 0,
                     children: week.days.map((day) {
                       return BlocBuilder<PlanBloc, PlanState>(
@@ -82,10 +76,7 @@ class PlanDetailScreen extends StatelessWidget {
 
                           return ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                            leading: Icon(
-                              isComplete ? Icons.check_circle : Icons.circle_outlined,
-                              color: isComplete ? Colors.green : theme.disabledColor,
-                            ),
+                            leading: Icon(isComplete ? Icons.check_circle : Icons.circle_outlined, color: isComplete ? Colors.green : theme.disabledColor),
                             title: Text(day.title, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
                             subtitle: Text(day.workout.title, style: theme.textTheme.bodyMedium),
                             onTap: () {
@@ -114,10 +105,7 @@ class PlanDetailScreen extends StatelessWidget {
                                   MaterialPageRoute(
                                     builder: (_) => BlocProvider.value(
                                       value: BlocProvider.of<PlanBloc>(context),
-                                      child: WorkoutDetailScreen(
-                                        workout: day.workout,
-                                        planDayId: day.id,
-                                      ),
+                                      child: WorkoutDetailScreen(workout: day.workout, planDayId: day.id),
                                     ),
                                   ),
                                 );

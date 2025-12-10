@@ -9,12 +9,7 @@ class WorkoutSelectionScreen extends StatelessWidget {
   final String planDayId;
   final List<Workout> options;
 
-  const WorkoutSelectionScreen({
-    super.key,
-    required this.title,
-    required this.planDayId,
-    required this.options,
-  });
+  const WorkoutSelectionScreen({super.key, required this.title, required this.planDayId, required this.options});
 
   @override
   Widget build(BuildContext context) {
@@ -22,18 +17,13 @@ class WorkoutSelectionScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(
-        title: Text(title),
-      ),
+      appBar: AppBar(title: Text(title)),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.all(20.0),
-            child: Text(
-              "Choose your variation for today:",
-              style: theme.textTheme.bodyLarge,
-            ),
+            child: Text("Choose your variation for today:", style: theme.textTheme.bodyLarge),
           ),
           Expanded(
             child: ListView.separated(
@@ -56,10 +46,7 @@ class WorkoutSelectionScreen extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (_) => BlocProvider.value(
                             value: BlocProvider.of<PlanBloc>(context),
-                            child: WorkoutDetailScreen(
-                              workout: workout,
-                              planDayId: planDayId,
-                            ),
+                            child: WorkoutDetailScreen(workout: workout, planDayId: planDayId),
                           ),
                         ),
                       );
@@ -72,32 +59,18 @@ class WorkoutSelectionScreen extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  workout.title,
-                                  style: theme.textTheme.titleMedium,
-                                ),
-                              ),
-                              Icon(Icons.arrow_forward_ios,
-                                  size: 16,
-                                  color: theme.primaryColor
-                              ),
+                              Expanded(child: Text(workout.title, style: theme.textTheme.titleMedium)),
+                              Icon(Icons.arrow_forward_ios, size: 16, color: theme.primaryColor),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            workout.description,
-                            style: theme.textTheme.bodyMedium,
-                          ),
+                          Text(workout.description, style: theme.textTheme.bodyMedium),
                           const SizedBox(height: 12),
                           Row(
                             children: [
                               Icon(Icons.timer_outlined, size: 16, color: theme.disabledColor),
                               const SizedBox(width: 6),
-                              Text(
-                                "${_calculateTotalDuration(workout)} mins",
-                                style: theme.textTheme.bodySmall,
-                              ),
+                              Text("${_calculateTotalDuration(workout)} mins", style: theme.textTheme.bodySmall),
                             ],
                           ),
                         ],

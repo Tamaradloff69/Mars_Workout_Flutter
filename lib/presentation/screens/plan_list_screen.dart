@@ -12,7 +12,7 @@ class PlanListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final plans = WorkoutRepository().getAllPlans().where((workout)=>workout.workoutType == workoutType).toList();
+    final plans = WorkoutRepository().getAllPlans().where((workout) => workout.workoutType == workoutType).toList();
     final theme = Theme.of(context);
 
     return SafeArea(

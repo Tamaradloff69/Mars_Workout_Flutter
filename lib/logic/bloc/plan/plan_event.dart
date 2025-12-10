@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
 
-
 // --- EVENTS ---
 abstract class PlanEvent extends Equatable {
   const PlanEvent();

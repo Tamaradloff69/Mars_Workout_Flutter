@@ -7,22 +7,27 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Mars Workout")),
-      body: Center(
-        child: TabBar(
-
-          tabs: [
-            Tab(
-              child: TabBarView(children: [PlanListScreen(workoutType: WorkoutType.cycling)]),
-            ),
-            Tab(
-              child: TabBarView(children: [PlanListScreen(workoutType: WorkoutType.rowing)]),
-            ),
-            Tab(
-              child: TabBarView(children: [PlanListScreen(workoutType: WorkoutType.kettleBell)]),
-            ),
-          ],
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Mars Workout"),
+          bottom: TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.directions_bike), text: "Cycling"),
+              Tab(icon: Icon(Icons.rowing), text: "Rowing"),
+              Tab(icon: Icon(Icons.fitness_center), text: "Kettlebell"),
+            ],
+          ),
+        ),
+        body: Center(
+          child: TabBarView(
+            children: [
+              PlanListScreen(workoutType: WorkoutType.cycling),
+              PlanListScreen(workoutType: WorkoutType.rowing),
+              PlanListScreen(workoutType: WorkoutType.kettleBell),
+            ],
+          ),
         ),
       ),
     );

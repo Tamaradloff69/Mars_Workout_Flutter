@@ -11,10 +11,7 @@ Workout simpleIntervalWorkout(String title, String description, {required Durati
     description: description,
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Get the blood flowing.'),
-      for(int i=0; i<reps; i++) ...[
-        WorkoutStage(name: 'Work', duration: workDuration, description: 'Maintain target intensity.'),
-        WorkoutStage(name: 'Rest', duration: restDuration, description: 'Active recovery.'),
-      ],
+      for (int i = 0; i < reps; i++) ...[WorkoutStage(name: 'Work', duration: workDuration, description: 'Maintain target intensity.'), WorkoutStage(name: 'Rest', duration: restDuration, description: 'Active recovery.')],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: 'Stretch.'),
     ],
   );

@@ -20,7 +20,6 @@ class WorkoutDetailScreen extends StatefulWidget {
 }
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
-
   @override
   void initState() {
     super.initState();
@@ -41,16 +40,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       create: (context) => TimerBloc(widget.workout.stages),
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
-        appBar: AppBar(
-          title: Text(widget.workout.title),
-        ),
+        appBar: AppBar(title: Text(widget.workout.title)),
         body: BlocListener<TimerBloc, TimerState>(
           listener: (context, state) {
             if (state.isFinished) {
               context.read<PlanBloc>().add(MarkDayAsCompleted(widget.planDayId));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Workout Completed!")),
-              );
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Workout Completed!")));
               Navigator.pop(context);
             }
           },
@@ -69,14 +64,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     final hasStarted = state.isRunning || state.elapsed > Duration.zero || state.currentStageIndex > 0;
 
                     // Switch text based on state
-                    final String textToShow = hasStarted
-                        ? state.currentStage.description
-                        : widget.workout.description;
+                    final String textToShow = hasStarted ? state.currentStage.description : widget.workout.description;
 
                     // Fallback if stage description is empty
-                    final String displayText = textToShow.isEmpty
-                        ? "Maintain target intensity."
-                        : textToShow;
+                    final String displayText = textToShow.isEmpty ? "Maintain target intensity." : textToShow;
 
                     return Container(
                       padding: const EdgeInsets.all(16),
@@ -84,13 +75,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         color: theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: theme.dividerColor),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          )
-                        ],
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                       ),
                       // Animate the size change if text length varies significantly
                       child: AnimatedSize(
@@ -100,11 +85,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Icon switches to indicate "Active Instruction" vs "General Info"
-                            Icon(
-                                hasStarted ? Icons.lightbulb_outline : Icons.info_outline,
-                                color: theme.primaryColor,
-                                size: 24
-                            ),
+                            Icon(hasStarted ? Icons.lightbulb_outline : Icons.info_outline, color: theme.primaryColor, size: 24),
                             const SizedBox(width: 16),
                             Expanded(
                               child: Text(
@@ -121,8 +102,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     );
                   },
                 ),
-                // --------------------------------
 
+                // --------------------------------
                 const Expanded(child: Center(child: _CircularTimerDisplay())),
                 const SizedBox(height: 32),
                 const _TimerControls(),
@@ -164,10 +145,7 @@ class _StageSegmentBar extends StatelessWidget {
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 height: 6,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(3),
-                ),
+                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
               ),
             );
           }),
@@ -202,20 +180,10 @@ class _CircularTimerDisplay extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CircularProgressIndicator(
-                value: 1.0,
-                strokeWidth: 15,
-                color: theme.dividerColor.withValues(alpha: 0.1),
-              ),
+              CircularProgressIndicator(value: 1.0, strokeWidth: 15, color: theme.dividerColor.withValues(alpha: 0.1)),
               Transform.rotate(
                 angle: 0,
-                child: CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 15,
-                  strokeCap: StrokeCap.round,
-                  color: progress < 0.2 ? theme.colorScheme.error : theme.primaryColor,
-                  backgroundColor: Colors.transparent,
-                ),
+                child: CircularProgressIndicator(value: progress, strokeWidth: 15, strokeCap: StrokeCap.round, color: progress < 0.2 ? theme.colorScheme.error : theme.primaryColor, backgroundColor: Colors.transparent),
               ),
               Padding(
                 padding: const EdgeInsets.all(40.0),
@@ -225,20 +193,10 @@ class _CircularTimerDisplay extends StatelessWidget {
                     Text(
                       currentStage.name.toUpperCase(),
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.textTheme.bodyMedium?.color,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: theme.textTheme.labelLarge?.copyWith(color: theme.textTheme.bodyMedium?.color, letterSpacing: 1.2, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      '$minutes:$seconds',
-                      style: theme.textTheme.displayLarge?.copyWith(
-                        fontSize: 56,
-                        fontFeatures: [const FontFeature.tabularFigures()],
-                      ),
-                    ),
+                    Text('$minutes:$seconds', style: theme.textTheme.displayLarge?.copyWith(fontSize: 56, fontFeatures: [const FontFeature.tabularFigures()])),
                     // Note: Removed stage description from here since it's now at the top
                   ],
                 ),
@@ -272,24 +230,12 @@ class _TimerControls extends StatelessWidget {
                 }
               },
               backgroundColor: state.isRunning ? Colors.amber : theme.primaryColor,
-              child: Icon(
-                state.isRunning ? Icons.pause : Icons.play_arrow,
-                size: 42,
-                color: Colors.white,
-              ),
+              child: Icon(state.isRunning ? Icons.pause : Icons.play_arrow, size: 42, color: Colors.white),
             ),
             const SizedBox(width: 32),
             Container(
-              decoration: BoxDecoration(
-                color: theme.dividerColor.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                iconSize: 32,
-                icon: const Icon(Icons.skip_next_rounded),
-                color: theme.iconTheme.color,
-                onPressed: () => context.read<TimerBloc>().add(NextStage()),
-              ),
+              decoration: BoxDecoration(color: theme.dividerColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: IconButton(iconSize: 32, icon: const Icon(Icons.skip_next_rounded), color: theme.iconTheme.color, onPressed: () => context.read<TimerBloc>().add(NextStage())),
             ),
           ],
         );
@@ -309,10 +255,7 @@ class _StageTracker extends StatelessWidget {
       builder: (context, state) {
         if (state.upcomingStages.isEmpty) {
           return Center(
-            child: Text(
-              "Final Stage!",
-              style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
-            ),
+            child: Text("Final Stage!", style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic)),
           );
         }
 
@@ -322,17 +265,10 @@ class _StageTracker extends StatelessWidget {
           children: [
             Text(
               "NEXT UP",
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-                color: theme.disabledColor,
-              ),
+              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1.0, color: theme.disabledColor),
             ),
             const SizedBox(height: 4),
-            Text(
-              next.name,
-              style: theme.textTheme.titleMedium,
-            ),
+            Text(next.name, style: theme.textTheme.titleMedium),
           ],
         );
       },

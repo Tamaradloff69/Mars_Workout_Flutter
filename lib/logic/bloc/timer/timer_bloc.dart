@@ -25,9 +25,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     if (state.isRunning) return; // Already running
 
     _tickerSubscription?.cancel();
-    _tickerSubscription = Stream.periodic(const Duration(seconds: 1), (x) => x).listen(
-      (tick) => add(TimerTicked(state.elapsed + const Duration(seconds: 1))),
-    );
+    _tickerSubscription = Stream.periodic(const Duration(seconds: 1), (x) => x).listen((tick) => add(TimerTicked(state.elapsed + const Duration(seconds: 1))));
 
     emit(state.copyWith(isRunning: true));
   }
@@ -50,10 +48,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       return;
     }
 
-    emit(state.copyWith(
-      currentStageIndex: state.currentStageIndex + 1,
-      elapsed: Duration.zero,
-    ));
+    emit(state.copyWith(currentStageIndex: state.currentStageIndex + 1, elapsed: Duration.zero));
   }
 
   void _onTimerTicked(TimerTicked event, Emitter<TimerState> emit) {

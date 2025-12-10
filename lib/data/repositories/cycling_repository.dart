@@ -1,3 +1,5 @@
+import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+
 import '../models/training_plan.dart';
 import '../models/workout_model.dart';
 import 'daily_repository.dart';
@@ -8,6 +10,7 @@ TrainingPlan cssFitness12WeekPlan() {
     title: '12-Week Indoor Cycling Plan',
     description: 'A 12-week progression from CSS Fitness designed to improve speed, power, and climbing ability.',
     difficulty: 'Advanced',
+    workoutType: WorkoutType.cycling,
     weeks: List.generate(12, (index) {
       int weekNum = index + 1;
 
@@ -46,6 +49,7 @@ TrainingPlan cssFitness12WeekPlan() {
     }),
   );
 }
+
 List<Workout> getPowerHourOptions() {
   return [
     powerHourWorkout(), // The original Sweet Spot version
@@ -61,34 +65,18 @@ Workout speedIntervalsWorkout({required bool isShort}) {
     stages: [
       // Warm-up -> Spin Easy
       WorkoutStage(
-          name: 'Warm-up',
-          duration: Duration(minutes: isShort ? 5 : 10),
-          description: 'Ride in a low gear so that your legs are spinning easily. This is used for warmups, cooldowns, and recovery.'
+        name: 'Warm-up',
+        duration: Duration(minutes: isShort ? 5 : 10),
+        description: 'Ride in a low gear so that your legs are spinning easily. This is used for warmups, cooldowns, and recovery.',
       ),
       // Main Set
       for (int i = 0; i < (isShort ? 4 : 8); i++) ...[
-        const WorkoutStage(
-            name: 'Tempo Effort',
-            duration: Duration(minutes: 2),
-            description: '80% Effort: A strong, sustainable pace. You should be breathing heavily but able to hold a short conversation.'
-        ),
-        const WorkoutStage(
-            name: 'Max Sprint',
-            duration: Duration(seconds: 30),
-            description: '100% Effort: Your maximum, all-out sprint or power. You cannot speak. Give it everything you have for the specified time.'
-        ),
-        const WorkoutStage(
-            name: 'Recovery',
-            duration: Duration(minutes: 2),
-            description: 'Recover: Drop your pace back to a "Spin Easy" to let your heart rate come down before the next interval.'
-        ),
+        const WorkoutStage(name: 'Tempo Effort', duration: Duration(minutes: 2), description: '80% Effort: A strong, sustainable pace. You should be breathing heavily but able to hold a short conversation.'),
+        const WorkoutStage(name: 'Max Sprint', duration: Duration(seconds: 30), description: '100% Effort: Your maximum, all-out sprint or power. You cannot speak. Give it everything you have for the specified time.'),
+        const WorkoutStage(name: 'Recovery', duration: Duration(minutes: 2), description: 'Recover: Drop your pace back to a "Spin Easy" to let your heart rate come down before the next interval.'),
       ],
       // Cool-down -> Spin Easy
-      const WorkoutStage(
-          name: 'Cool-down',
-          duration: Duration(minutes: 5),
-          description: 'Ride in a low gear so that your legs are spinning easily.'
-      ),
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: 'Ride in a low gear so that your legs are spinning easily.'),
     ],
   );
 }
@@ -96,51 +84,41 @@ Workout speedIntervalsWorkout({required bool isShort}) {
 Workout ladderIntervalsWorkout({required bool isShort}) {
   return Workout(
     title: isShort ? 'Ladder Intervals (30m)' : 'Ladder Intervals (60m)',
-    description: 'Progressively longer intervals. ' 'A very hard pace, just below your maximum. You can only say one or two words at a time.',
+    description:
+        'Progressively longer intervals. '
+        'A very hard pace, just below your maximum. You can only say one or two words at a time.',
     stages: [
-      const WorkoutStage(
-          name: 'Warm-up',
-          duration: Duration(minutes: 5),
-          description: 'Spin Easy: Ride in a low gear so that your legs are spinning easily.'
-      ),
+      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Spin Easy: Ride in a low gear so that your legs are spinning easily.'),
       // Ladder: 1 - 2 - 3 - 2 - 1
-      ...[1, 2, 3, 2, 1].map((min) => [
-        WorkoutStage(
-            name: '$min min Effort',
-            duration: Duration(minutes: min),
-            description: '90% Effort: A very hard pace, just below your maximum. You can only say one or two words at a time.'
-        ),
-        const WorkoutStage(
-            name: 'Rest',
-            duration: Duration(minutes: 1),
-            description: 'Recover: Drop your pace back to a "Spin Easy".'
-        ),
-      ]).expand((i) => i),
+      ...[1, 2, 3, 2, 1]
+          .map(
+            (min) => [
+              WorkoutStage(
+                name: '$min min Effort',
+                duration: Duration(minutes: min),
+                description: '90% Effort: A very hard pace, just below your maximum. You can only say one or two words at a time.',
+              ),
+              const WorkoutStage(name: 'Rest', duration: Duration(minutes: 1), description: 'Recover: Drop your pace back to a "Spin Easy".'),
+            ],
+          )
+          .expand((i) => i),
 
       if (!isShort) ...[
-        const WorkoutStage(
-            name: 'Set Break',
-            duration: Duration(minutes: 5),
-            description: 'Spin Easy: Active recovery between ladders.'
-        ),
-        ...[1, 2, 3, 2, 1].map((min) => [
-          WorkoutStage(
-              name: '$min min Effort',
-              duration: Duration(minutes: min),
-              description: '90% Effort: A very hard pace, just below your maximum.'
-          ),
-          const WorkoutStage(
-              name: 'Rest',
-              duration: Duration(minutes: 1),
-              description: 'Recover: Drop your pace back to a "Spin Easy".'
-          ),
-        ]).expand((i) => i),
+        const WorkoutStage(name: 'Set Break', duration: Duration(minutes: 5), description: 'Spin Easy: Active recovery between ladders.'),
+        ...[1, 2, 3, 2, 1]
+            .map(
+              (min) => [
+                WorkoutStage(
+                  name: '$min min Effort',
+                  duration: Duration(minutes: min),
+                  description: '90% Effort: A very hard pace, just below your maximum.',
+                ),
+                const WorkoutStage(name: 'Rest', duration: Duration(minutes: 1), description: 'Recover: Drop your pace back to a "Spin Easy".'),
+              ],
+            )
+            .expand((i) => i),
       ],
-      const WorkoutStage(
-          name: 'Cool-down',
-          duration: Duration(minutes: 5),
-          description: 'Ride in a low gear so that your legs are spinning easily.'
-      ),
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: 'Ride in a low gear so that your legs are spinning easily.'),
     ],
   );
 }
@@ -148,35 +126,17 @@ Workout ladderIntervalsWorkout({required bool isShort}) {
 Workout climbingBurstsWorkout({required bool isShort}) {
   return Workout(
     title: isShort ? 'Climbing Bursts (30m)' : 'Climbing Bursts (60m)',
-    description: 'Simulated hill attacks. ' 'Increase your gear/resistance, stand up out of the saddle, and attack the ‘climb’.',
+    description:
+        'Simulated hill attacks. '
+        'Increase your gear/resistance, stand up out of the saddle, and attack the ‘climb’.',
     stages: [
-      const WorkoutStage(
-          name: 'Warm-up',
-          duration: Duration(minutes: 5),
-          description: 'Spin Easy: Ride in a low gear so that your legs are spinning easily.'
-      ),
+      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Spin Easy: Ride in a low gear so that your legs are spinning easily.'),
       for (int i = 0; i < (isShort ? 5 : 10); i++) ...[
-        const WorkoutStage(
-            name: 'Climb Base',
-            duration: Duration(minutes: 3),
-            description: '80% Effort: A strong, sustainable pace. Increase gear/resistance to lower cadence (60-70 RPM).'
-        ),
-        const WorkoutStage(
-            name: 'Attack!',
-            duration: Duration(seconds: 30),
-            description: 'Stand and Pedal at 100%: Increase your gear/resistance, stand up out of the saddle, and attack the ‘climb’ at 100% effort.'
-        ),
-        const WorkoutStage(
-            name: 'Descend',
-            duration: Duration(minutes: 1, seconds: 30),
-            description: 'Recover: Drop your pace back to a "Spin Easy" with high cadence to flush legs.'
-        ),
+        const WorkoutStage(name: 'Climb Base', duration: Duration(minutes: 3), description: '80% Effort: A strong, sustainable pace. Increase gear/resistance to lower cadence (60-70 RPM).'),
+        const WorkoutStage(name: 'Attack!', duration: Duration(seconds: 30), description: 'Stand and Pedal at 100%: Increase your gear/resistance, stand up out of the saddle, and attack the ‘climb’ at 100% effort.'),
+        const WorkoutStage(name: 'Descend', duration: Duration(minutes: 1, seconds: 30), description: 'Recover: Drop your pace back to a "Spin Easy" with high cadence to flush legs.'),
       ],
-      const WorkoutStage(
-          name: 'Cool-down',
-          duration: Duration(minutes: 5),
-          description: 'Ride in a low gear so that your legs are spinning easily.'
-      ),
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: 'Ride in a low gear so that your legs are spinning easily.'),
     ],
   );
 }
@@ -224,26 +184,15 @@ Workout powerHourSteady() {
     ],
   );
 }
+
 Workout sundayRideWorkout() {
   return Workout(
     title: 'Sunday Endurance',
     description: 'A very low-intensity ride to aid recovery and improve base fitness.',
     stages: [
-      const WorkoutStage(
-          name: 'Warm-up',
-          duration: Duration(minutes: 10),
-          description: 'Spin Easy: Ease into the ride.'
-      ),
-      const WorkoutStage(
-          name: 'Steady State',
-          duration: Duration(minutes: 40),
-          description: 'Gentle Ride: A very low-intensity ride to aid recovery and improve base fitness. You should be able to hold a full conversation easily.'
-      ),
-      const WorkoutStage(
-          name: 'Cool-down',
-          duration: Duration(minutes: 10),
-          description: 'Spin Easy: Easy spin to finish.'
-      ),
+      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: 'Spin Easy: Ease into the ride.'),
+      const WorkoutStage(name: 'Steady State', duration: Duration(minutes: 40), description: 'Gentle Ride: A very low-intensity ride to aid recovery and improve base fitness. You should be able to hold a full conversation easily.'),
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: 'Spin Easy: Easy spin to finish.'),
     ],
   );
 }
@@ -254,6 +203,7 @@ TrainingPlan cyclingPlan() {
     title: '12-Week Indoor Cycling Plan',
     description: 'A comprehensive plan for building cycling endurance and power.',
     difficulty: 'Intermediate',
+    workoutType: WorkoutType.cycling,
     weeks: List.generate(12, (weekIndex) {
       return PlanWeek(
         weekNumber: weekIndex + 1,

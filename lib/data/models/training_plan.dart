@@ -10,14 +10,7 @@ class TrainingPlan extends Equatable {
   final List<PlanWeek> weeks;
   final WorkoutType workoutType;
 
-  const TrainingPlan({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.difficulty,
-    required this.weeks,
-    this.workoutType = WorkoutType.other
-  });
+  const TrainingPlan({required this.id, required this.title, required this.description, required this.difficulty, required this.weeks, this.workoutType = WorkoutType.other});
 
   // Calculate total progress based on completed workout IDs
   double calculateProgress(List<String> completedWorkoutIds) {
@@ -39,21 +32,10 @@ class TrainingPlan extends Equatable {
 
   // Boilerplate JSON serialization would go here
   // For brevity, I'll skip manual toJson/fromJson but it's required for HydratedBloc
-  Map<String, dynamic> toJson() => {
-    'id': id, 'title': title, 'description': description, 'difficulty': difficulty,
-    'weeks': weeks.map((w) => w.toJson()).toList(),
-    'workout_type': workoutType,
-  };
+  Map<String, dynamic> toJson() => {'id': id, 'title': title, 'description': description, 'difficulty': difficulty, 'weeks': weeks.map((w) => w.toJson()).toList(), 'workout_type': workoutType};
 
   factory TrainingPlan.fromJson(Map<String, dynamic> json) {
-    return TrainingPlan(
-      id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      difficulty: json['difficulty'],
-      weeks: (json['weeks'] as List).map((i) => PlanWeek.fromJson(i)).toList(),
-      workoutType: json['workout_type'] ?? WorkoutType.other,
-    );
+    return TrainingPlan(id: json['id'], title: json['title'], description: json['description'], difficulty: json['difficulty'], weeks: (json['weeks'] as List).map((i) => PlanWeek.fromJson(i)).toList(), workoutType: json['workout_type'] ?? WorkoutType.other);
   }
 }
 
@@ -66,16 +48,10 @@ class PlanWeek extends Equatable {
   @override
   List<Object?> get props => [weekNumber, days];
 
-  Map<String, dynamic> toJson() => {
-    'weekNumber': weekNumber,
-    'days': days.map((d) => d.toJson()).toList(),
-  };
+  Map<String, dynamic> toJson() => {'weekNumber': weekNumber, 'days': days.map((d) => d.toJson()).toList()};
 
   factory PlanWeek.fromJson(Map<String, dynamic> json) {
-    return PlanWeek(
-      weekNumber: json['weekNumber'],
-      days: (json['days'] as List).map((i) => PlanDay.fromJson(i)).toList(),
-    );
+    return PlanWeek(weekNumber: json['weekNumber'], days: (json['days'] as List).map((i) => PlanDay.fromJson(i)).toList());
   }
 }
 
@@ -95,8 +71,8 @@ class PlanDay extends Equatable {
     'workout': {
       'title': workout.title,
       'description': workout.description,
-      'stages': workout.stages.map((s) => {'name':s.name, 'duration': s.duration.inSeconds}).toList(),
-    }
+      'stages': workout.stages.map((s) => {'name': s.name, 'duration': s.duration.inSeconds}).toList(),
+    },
   };
 
   factory PlanDay.fromJson(Map<String, dynamic> json) {
@@ -108,10 +84,14 @@ class PlanDay extends Equatable {
       workout: Workout(
         title: json['workout']['title'],
         description: json['workout']['description'],
-        stages: (json['workout']['stages'] as List).map((s) => WorkoutStage(
-            name: s['name'],
-            duration: Duration(seconds: s['duration'])
-        )).toList(),
+        stages: (json['workout']['stages'] as List)
+            .map(
+              (s) => WorkoutStage(
+                name: s['name'],
+                duration: Duration(seconds: s['duration']),
+              ),
+            )
+            .toList(),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
 import 'package:mars_workout_app/data/models/training_plan.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
 
@@ -7,6 +8,7 @@ TrainingPlan kettlebellPlan() {
     title: '12-Week Kettlebell Program',
     description: 'Build strength and power with this kettlebell program.',
     difficulty: 'Intermediate',
+    workoutType: WorkoutType.kettleBell,
     weeks: List.generate(12, (weekIndex) {
       return PlanWeek(
         weekNumber: weekIndex + 1,

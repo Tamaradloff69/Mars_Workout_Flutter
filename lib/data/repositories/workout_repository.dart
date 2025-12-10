@@ -4,22 +4,12 @@ import 'cycling_repository.dart';
 import 'kettlebell_repository.dart';
 import 'rowing_repository.dart';
 
-
 export 'cycling_repository.dart';
 export 'kettlebell_repository.dart';
 export 'rowing_repository.dart';
 
 class WorkoutRepository {
   List<TrainingPlan> getAllPlans() {
-    return [
-      cssFitness12WeekPlan(),
-      cyclingPlan(),
-      rowingPlan(),
-      insideIndoorBeginnerPlan(),
-      insideIndoorIntermediatePlan(),
-      petePlan(),
-      kettlebellPlan(),
-    ];
+    return [cssFitness12WeekPlan(), cyclingPlan(), rowingPlan(), insideIndoorBeginnerPlan(), insideIndoorIntermediatePlan(), petePlan(), kettlebellPlan()];
   }
 }
-

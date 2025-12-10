@@ -9,9 +9,7 @@ import '../../logic/bloc/plan/plan_bloc.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  HydratedBloc.storage = await HydratedStorage.build(
-    storageDirectory: await getApplicationDocumentsDirectory(),
-  );
+  HydratedBloc.storage = await HydratedStorage.build(storageDirectory: await getApplicationDocumentsDirectory());
 
   runApp(const MyApp());
 }

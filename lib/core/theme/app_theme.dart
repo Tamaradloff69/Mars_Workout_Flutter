@@ -16,14 +16,7 @@ class AppTheme {
       primaryColor: primaryColor,
       scaffoldBackgroundColor: secondaryColor,
 
-      colorScheme: const ColorScheme.light(
-        primary: primaryColor,
-        secondary: primaryColor,
-        tertiary: successColor,
-        surface: cardBackground,
-        onSurface: textDark,
-        error: Colors.redAccent,
-      ),
+      colorScheme: const ColorScheme.light(primary: primaryColor, secondary: primaryColor, tertiary: successColor, surface: cardBackground, onSurface: textDark, error: Colors.redAccent),
 
       // Global AppBar Style
       appBarTheme: const AppBarTheme(
@@ -32,11 +25,7 @@ class AppTheme {
         centerTitle: true,
         scrolledUnderElevation: 0,
         iconTheme: IconThemeData(color: textDark),
-        titleTextStyle: TextStyle(
-          color: textDark,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
+        titleTextStyle: TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold),
       ),
 
       // Global Card Style
@@ -52,32 +41,18 @@ class AppTheme {
 
       // Text Styles
       textTheme: const TextTheme(
-        titleLarge: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: textDark,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: textDark,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 14,
-          color: textDark,
-          height: 1.5,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 13,
-          color: textLight,
-          height: 1.4,
-        ),
-        headlineMedium: TextStyle( // Timer Text
+        titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textDark),
+        bodyLarge: TextStyle(fontSize: 14, color: textDark, height: 1.5),
+        bodyMedium: TextStyle(fontSize: 13, color: textLight, height: 1.4),
+        headlineMedium: TextStyle(
+          // Timer Text
           fontSize: 24,
           fontWeight: FontWeight.bold,
           color: textDark,
         ),
-        displayLarge: TextStyle( // Big Timer Numbers
+        displayLarge: TextStyle(
+          // Big Timer Numbers
           fontSize: 60,
           fontWeight: FontWeight.bold,
           color: textDark,
@@ -91,17 +66,12 @@ class AppTheme {
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
       ),
 
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(backgroundColor: primaryColor, foregroundColor: Colors.white),
     );
   }
 }

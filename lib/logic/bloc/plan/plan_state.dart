@@ -10,19 +10,10 @@ class PlanState extends Equatable {
   // We don't persist the actual plan objects (they are static),
   // just the IDs needed to look them up.
 
-  const PlanState({
-    this.activePlanId,
-    this.completedDayIds = const [],
-  });
+  const PlanState({this.activePlanId, this.completedDayIds = const []});
 
-  PlanState copyWith({
-    String? activePlanId,
-    List<String>? completedDayIds,
-  }) {
-    return PlanState(
-      activePlanId: activePlanId ?? this.activePlanId,
-      completedDayIds: completedDayIds ?? this.completedDayIds,
-    );
+  PlanState copyWith({String? activePlanId, List<String>? completedDayIds}) {
+    return PlanState(activePlanId: activePlanId ?? this.activePlanId, completedDayIds: completedDayIds ?? this.completedDayIds);
   }
 
   @override
