@@ -10,6 +10,6 @@ export 'rowing_repository.dart';
 
 class WorkoutRepository {
   List<TrainingPlan> getAllPlans() {
-    return [cssFitness12WeekPlan(), cyclingPlan(), rowingPlan(), insideIndoorBeginnerPlan(), insideIndoorIntermediatePlan(), petePlan(), kettlebellPlan()];
+    return [cssFitness12WeekPlan(), cyclingPlan(), rowingPlan(), insideIndoorBeginnerPlan(), insideIndoorIntermediatePlan(), petePlan(), kettlebellPlan(), plan015KettlebellProgram()];
   }
 }

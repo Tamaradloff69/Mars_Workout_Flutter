@@ -13,6 +13,7 @@ class HomeScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text("Mars Workout"),
           bottom: TabBar(
+            dividerColor: Colors.transparent,
             tabs: [
               Tab(icon: Icon(Icons.directions_bike), text: "Cycling"),
               Tab(icon: Icon(Icons.rowing), text: "Rowing"),

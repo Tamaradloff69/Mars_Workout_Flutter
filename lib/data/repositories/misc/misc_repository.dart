@@ -16,3 +16,4 @@ Workout simpleIntervalWorkout(String title, String description, {required Durati
     ],
   );
 }
+

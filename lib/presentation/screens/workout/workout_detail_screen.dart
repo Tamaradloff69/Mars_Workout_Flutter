@@ -1,7 +1,8 @@
-// Needed for FontFeature
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
+import 'package:mars_workout_app/data/repositories/misc/gif_repository.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_event.dart';
 import 'package:mars_workout_app/logic/bloc/timer/timer_bloc.dart';
@@ -39,78 +40,83 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     return BlocProvider(
       create: (context) => TimerBloc(widget.workout.stages),
       child: Scaffold(
-        backgroundColor: theme.colorScheme.surface,
-        appBar: AppBar(title: Text(widget.workout.title)),
+        backgroundColor: Colors.white, // Clean background for the GIF
+        appBar: AppBar(
+          title: Text(widget.workout.title),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: Colors.black,
+        ),
+        extendBodyBehindAppBar: true, // Allow GIF to go behind App Bar if desired
         body: BlocListener<TimerBloc, TimerState>(
           listener: (context, state) {
             if (state.isFinished) {
               context.read<PlanBloc>().add(MarkDayAsCompleted(widget.planDayId));
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Workout Completed!")));
               Navigator.pop(context);
             }
           },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _StageSegmentBar(),
-                const SizedBox(height: 32),
-
-                // --- DYNAMIC DESCRIPTION BOX ---
-                BlocBuilder<TimerBloc, TimerState>(
+          child: Column(
+            children: [
+              // --- 1. TOP SECTION: GIF ANIMATION ---
+              Expanded(
+                flex: 5, // Takes up top 50% roughly
+                child: BlocBuilder<TimerBloc, TimerState>(
+                  buildWhen: (previous, current) =>
+                  previous.currentStageIndex != current.currentStageIndex,
                   builder: (context, state) {
-                    // Check if workout has started (running, elapsed time > 0, or past first stage)
-                    final hasStarted = state.isRunning || state.elapsed > Duration.zero || state.currentStageIndex > 0;
-
-                    // Switch text based on state
-                    final String textToShow = hasStarted ? state.currentStage.description : widget.workout.description;
-
-                    // Fallback if stage description is empty
-                    final String displayText = textToShow.isEmpty ? "Maintain target intensity." : textToShow;
+                    final gifUrl = GifRepository.getGifUrl(
+                        widget.workout.title,
+                        state.currentStage.name
+                    );
 
                     return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: theme.dividerColor),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
-                      ),
-                      // Animate the size change if text length varies significantly
-                      child: AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
-                        alignment: Alignment.topCenter,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Icon switches to indicate "Active Instruction" vs "General Info"
-                            Icon(hasStarted ? Icons.lightbulb_outline : Icons.info_outline, color: theme.primaryColor, size: 24),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Text(
-                                displayText,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.8),
-                                  height: 1.4, // Good line height for reading instructions
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      width: double.infinity,
+                      color: Colors.grey.shade100,
+                      child: Image.network(
+                        gifUrl,
+                        fit: BoxFit.cover,
+                        // Add a loading builder for smoother transitions
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(child: CircularProgressIndicator(color: theme.primaryColor));
+                        },
+                        errorBuilder: (context, error, stackTrace) =>
+                        const Center(child: Icon(Icons.fitness_center, size: 64, color: Colors.grey)),
                       ),
                     );
                   },
                 ),
+              ),
 
-                // --------------------------------
-                const Expanded(child: Center(child: _CircularTimerDisplay())),
-                const SizedBox(height: 32),
-                const _TimerControls(),
-                const SizedBox(height: 24),
-                const _StageTracker(),
-              ],
-            ),
+              // --- 2. BOTTOM SECTION: CONTROLS & TIMER ---
+              Expanded(
+                flex: 6,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, -5),
+                      )
+                    ],
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _StageInfoAndSegmentBar(),
+                      Spacer(),
+                      _LinearTimerDisplay(),
+                      SizedBox(height: 32),
+                      _TimerControls(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -118,11 +124,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 }
 
-// ... (Rest of the file remains unchanged: _StageSegmentBar, _CircularTimerDisplay, etc.)
-// ... Ensure _CircularTimerDisplay still exists as provided in previous steps.
-
-class _StageSegmentBar extends StatelessWidget {
-  const _StageSegmentBar();
+class _StageInfoAndSegmentBar extends StatelessWidget {
+  const _StageInfoAndSegmentBar();
 
   @override
   Widget build(BuildContext context) {
@@ -130,33 +133,60 @@ class _StageSegmentBar extends StatelessWidget {
 
     return BlocBuilder<TimerBloc, TimerState>(
       builder: (context, state) {
-        return Row(
-          children: List.generate(state.stages.length, (index) {
-            Color color;
-            if (index < state.currentStageIndex) {
-              color = theme.colorScheme.tertiary;
-            } else if (index == state.currentStageIndex) {
-              color = theme.primaryColor;
-            } else {
-              color = theme.disabledColor.withValues(alpha: 0.2);
-            }
-
-            return Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                height: 6,
-                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+        return Column(
+          children: [
+            // Segment Bar (Total Progress)
+            SizedBox(
+              height: 4,
+              child: Row(
+                children: List.generate(state.stages.length, (index) {
+                  Color color;
+                  if (index < state.currentStageIndex) {
+                    color = theme.primaryColor;
+                  } else if (index == state.currentStageIndex) {
+                    color = theme.primaryColor;
+                  } else {
+                    color = Colors.grey.shade200;
+                  }
+                  return Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  );
+                }),
               ),
-            );
-          }),
+            ),
+            const SizedBox(height: 24),
+
+            // Stage Name & Instructions
+            Text(
+              state.currentStage.name.toUpperCase(),
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.primaryColor,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              state.currentStage.description.isNotEmpty
+                  ? state.currentStage.description
+                  : "Keep pushing!",
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+            ),
+          ],
         );
       },
     );
   }
 }
 
-class _CircularTimerDisplay extends StatelessWidget {
-  const _CircularTimerDisplay();
+class _LinearTimerDisplay extends StatelessWidget {
+  const _LinearTimerDisplay();
 
   @override
   Widget build(BuildContext context) {
@@ -164,45 +194,43 @@ class _CircularTimerDisplay extends StatelessWidget {
 
     return BlocBuilder<TimerBloc, TimerState>(
       builder: (context, state) {
-        final currentStage = state.currentStage;
-        final totalSeconds = currentStage.duration.inSeconds;
+        final totalSeconds = state.currentStage.duration.inSeconds;
         final elapsedSeconds = state.elapsed.inSeconds;
+        // Linear Progress: 0.0 to 1.0 (fills up)
+        double progress = totalSeconds > 0 ? (elapsedSeconds / totalSeconds) : 0.0;
 
-        double progress = totalSeconds > 0 ? 1.0 - (elapsedSeconds / totalSeconds) : 1.0;
-
-        final duration = currentStage.duration - state.elapsed;
+        final duration = state.currentStage.duration - state.elapsed;
         final minutes = (duration.inSeconds / 60).floor().toString().padLeft(2, '0');
         final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
 
-        return SizedBox(
-          width: 300,
-          height: 300,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              CircularProgressIndicator(value: 1.0, strokeWidth: 15, color: theme.dividerColor.withValues(alpha: 0.1)),
-              Transform.rotate(
-                angle: 0,
-                child: CircularProgressIndicator(value: progress, strokeWidth: 15, strokeCap: StrokeCap.round, color: progress < 0.2 ? theme.colorScheme.error : theme.primaryColor, backgroundColor: Colors.transparent),
+        return Column(
+          children: [
+            // Big Countdown Text
+            Text(
+              '$minutes:$seconds',
+              style: theme.textTheme.displayLarge?.copyWith(
+                fontSize: 80,
+                fontWeight: FontWeight.w800,
+                color: theme.textTheme.bodyLarge?.color,
+                height: 1.0,
+                fontFeatures: [const FontFeature.tabularFigures()],
               ),
-              Padding(
-                padding: const EdgeInsets.all(40.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      currentStage.name.toUpperCase(),
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.labelLarge?.copyWith(color: theme.textTheme.bodyMedium?.color, letterSpacing: 1.2, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text('$minutes:$seconds', style: theme.textTheme.displayLarge?.copyWith(fontSize: 56, fontFeatures: [const FontFeature.tabularFigures()])),
-                    // Note: Removed stage description from here since it's now at the top
-                  ],
+            ),
+            const SizedBox(height: 24),
+
+            // Linear Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                height: 12,
+                child: LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: Colors.grey.shade100,
+                  color: progress > 0.8 ? theme.colorScheme.error : theme.primaryColor,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
@@ -219,56 +247,53 @@ class _TimerControls extends StatelessWidget {
     return BlocBuilder<TimerBloc, TimerState>(
       builder: (context, state) {
         return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            FloatingActionButton(
-              onPressed: () {
-                if (state.isRunning) {
-                  context.read<TimerBloc>().add(PauseTimer());
-                } else {
-                  context.read<TimerBloc>().add(StartTimer());
-                }
-              },
-              backgroundColor: state.isRunning ? Colors.amber : theme.primaryColor,
-              child: Icon(state.isRunning ? Icons.pause : Icons.play_arrow, size: 42, color: Colors.white),
+            // Pause/Play Button
+            Expanded(
+              child: SizedBox(
+                height: 64,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (state.isRunning) {
+                      context.read<TimerBloc>().add(PauseTimer());
+                    } else {
+                      context.read<TimerBloc>().add(StartTimer());
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: state.isRunning ? Colors.amber.shade100 : theme.primaryColor,
+                    foregroundColor: state.isRunning ? Colors.amber.shade900 : Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(state.isRunning ? Icons.pause : Icons.play_arrow),
+                      const SizedBox(width: 8),
+                      Text(state.isRunning ? "PAUSE" : "START WORKOUT"),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: 32),
-            Container(
-              decoration: BoxDecoration(color: theme.dividerColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-              child: IconButton(iconSize: 32, icon: const Icon(Icons.skip_next_rounded), color: theme.iconTheme.color, onPressed: () => context.read<TimerBloc>().add(NextStage())),
+            const SizedBox(width: 16),
+
+            // Skip Button
+            SizedBox(
+              width: 64,
+              height: 64,
+              child: OutlinedButton(
+                onPressed: () => context.read<TimerBloc>().add(NextStage()),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  side: BorderSide(color: Colors.grey.shade300),
+                  padding: EdgeInsets.zero,
+                ),
+                child: const Icon(Icons.skip_next, color: Colors.grey),
+              ),
             ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _StageTracker extends StatelessWidget {
-  const _StageTracker();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return BlocBuilder<TimerBloc, TimerState>(
-      builder: (context, state) {
-        if (state.upcomingStages.isEmpty) {
-          return Center(
-            child: Text("Final Stage!", style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic)),
-          );
-        }
-
-        final next = state.upcomingStages.first;
-
-        return Column(
-          children: [
-            Text(
-              "NEXT UP",
-              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1.0, color: theme.disabledColor),
-            ),
-            const SizedBox(height: 4),
-            Text(next.name, style: theme.textTheme.titleMedium),
           ],
         );
       },

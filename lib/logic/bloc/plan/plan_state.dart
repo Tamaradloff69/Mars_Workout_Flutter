@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../data/models/training_plan.dart';
-import '../../../data/repositories/workout_repository.dart';
+import '../../../data/repositories/workouts/workout_repository.dart';
 
 class PlanState extends Equatable {
   final String? activePlanId;

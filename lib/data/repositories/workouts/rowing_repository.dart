@@ -2,7 +2,7 @@ import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
 import 'package:mars_workout_app/data/models/training_plan.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
 
-import 'daily_repository.dart';
+import '../misc/misc_repository.dart';
 
 TrainingPlan insideIndoorBeginnerPlan() {
   return TrainingPlan(

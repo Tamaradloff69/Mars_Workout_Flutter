@@ -1,8 +1,8 @@
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
 
-import '../models/training_plan.dart';
-import '../models/workout_model.dart';
-import 'daily_repository.dart';
+import '../../models/training_plan.dart';
+import '../../models/workout_model.dart';
+import '../misc/misc_repository.dart';
 
 TrainingPlan cssFitness12WeekPlan() {
   return TrainingPlan(

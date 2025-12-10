@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mars_workout_app/data/models/training_plan.dart';
-import 'package:mars_workout_app/data/repositories/workout_repository.dart'; // Import Repository
+import 'package:mars_workout_app/data/repositories/workouts/workout_repository.dart'; // Import Repository
 import 'package:mars_workout_app/logic/bloc/plan/plan_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_event.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_state.dart';
