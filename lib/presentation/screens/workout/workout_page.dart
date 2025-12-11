@@ -70,7 +70,7 @@ class WorkoutPage extends StatelessWidget {
                     SoundService().playWorkoutComplete();
                   }
                 } else {
-                  SoundService().playCompleteTraining();
+                  SoundService().playTrainingPlanComplete();
 
                 }
               } catch (e) {

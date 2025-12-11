@@ -11,7 +11,7 @@ class SoundService {
   Future<void> init() async {
     await _player.setReleaseMode(ReleaseMode.stop);
     await _player.setVolume(1.0);
-    // This configuration ensures other audio is NOT paused
+
     await _player.setAudioContext(AudioContext(
       android: AudioContextAndroid(
         isSpeakerphoneOn: true,
@@ -25,26 +25,29 @@ class SoundService {
         category: AVAudioSessionCategory.playback,
         options: {
           AVAudioSessionOptions.mixWithOthers,
-          AVAudioSessionOptions.duckOthers // Optional: removes this if you want full volume music
+          AVAudioSessionOptions.duckOthers
         },
       ),
     ));
   }
 
   Future<void> playCountdown() async {
-    // Assuming you have a short 'beep.mp3' in assets/sounds/
+    await _player.stop();
     await _player.play(AssetSource('sounds/countdown.mp3'));
   }
 
   Future<void> playWorkoutComplete() async {
+    await _player.stop();
     await _player.play(AssetSource('sounds/workout_complete.mp3'));
   }
 
   Future<void> playWeekComplete() async {
+    await _player.stop();
     await _player.play(AssetSource('sounds/week_complete.mp3'));
   }
 
-  Future<void> playCompleteTraining() async {
+  Future<void> playTrainingPlanComplete() async {
+    await _player.stop();
     await _player.play(AssetSource('sounds/training_complete.mp3'));
   }
 }
