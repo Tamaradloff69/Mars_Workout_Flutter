@@ -4,10 +4,9 @@ import 'package:mars_workout_app/data/models/training_plan.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_event.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_state.dart';
-import 'package:mars_workout_app/presentation/screens/workout/workout_selection.dart';
+import 'package:mars_workout_app/presentation/screens/workout/selection/workout_selection_screen.dart';
 import 'package:mars_workout_app/data/repositories/workouts/workout_repository.dart';
-
-import '../individual/workout_preview_screen.dart';
+import 'package:mars_workout_app/presentation/screens/workout/workout_preview/workout_preview_screen.dart';
 
 class PlanDetailScreen extends StatelessWidget {
   final TrainingPlan plan;
@@ -49,9 +48,9 @@ class PlanDetailScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.primaryColor.withOpacity(0.1),
+                    color: theme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
+                    border: Border.all(color: theme.primaryColor.withValues(alpha: 0.2)),
                   ),
                   child: Text(
                     "You are currently working on this plan.",
@@ -99,11 +98,11 @@ class PlanDetailScreen extends StatelessWidget {
                       if (isWeekComplete) {
                         titleColor = Colors.green;
                         leadingIcon = const Icon(Icons.check_circle, color: Colors.green);
-                        backgroundColor = Colors.green.withOpacity(0.05);
+                        backgroundColor = Colors.green.withValues(alpha: 0.05);
                       } else if (isWeekLocked) {
                         titleColor = Colors.grey;
                         leadingIcon = const Icon(Icons.lock, color: Colors.grey);
-                        backgroundColor = Colors.grey.withOpacity(0.05);
+                        backgroundColor = Colors.grey.withValues(alpha: 0.05);
                       } else {
                         titleColor = theme.textTheme.titleMedium?.color;
                         leadingIcon = null;

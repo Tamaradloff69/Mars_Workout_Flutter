@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_bloc.dart';
-import 'package:mars_workout_app/presentation/screens/workout/workout_detail_screen.dart';
+import 'package:mars_workout_app/presentation/screens/workout/workout_page.dart';
 
 class WorkoutPreviewScreen extends StatelessWidget {
   final Workout workout;
@@ -40,7 +40,7 @@ class WorkoutPreviewScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) => BlocProvider.value(
                       value: BlocProvider.of<PlanBloc>(context),
-                      child: WorkoutDetailScreen(
+                      child: WorkoutPage(
                         workout: workout,
                         planDayId: planDayId,
                         workoutType: workoutType,

@@ -1,4 +1,3 @@
-// lib/presentation/screens/plan_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
@@ -27,7 +26,6 @@ class PlanListScreen extends StatelessWidget {
               final plan = plans[index];
               final progress = plan.calculateProgress(state.completedDayIds);
 
-              // Correct Check: Is this specific plan the one saved for this WorkoutType?
               final isActive = state.isPlanActive(plan.id, workoutType);
 
               return Card(
@@ -41,7 +39,6 @@ class PlanListScreen extends StatelessWidget {
                     ? RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
-                    // Green if done, Blue if Active, None if neither
                       color: progress >= 1.0
                           ? theme.colorScheme.tertiary
                           : isActive ? theme.primaryColor : Colors.transparent,
@@ -49,7 +46,7 @@ class PlanListScreen extends StatelessWidget {
                   ),
                 )
                     : null,
-                elevation: isActive || progress >= 1.0 ? 4 : 1, // Higher lift for active
+                elevation: isActive || progress >= 1.0 ? 4 : 1,
                 child: InkWell(
                   onTap: () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => PlanDetailScreen(plan: plan)));
