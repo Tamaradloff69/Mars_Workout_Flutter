@@ -35,13 +35,46 @@ class GifRepository {
     }
 
     if (workoutType == WorkoutType.kettleBell) {
-      if (stage.contains('halos')) {
+
+      // -- NEW: NML Plan Specifics --
+      if (stage.contains('burpee')) {
+        return 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzR0cnN2M2tjcDB1bW9sYjB6YmdtN2d4MnM3Nmkzc3gyaXV3ajQyMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/23hPPmr8PnmDAkjLbW/giphy.gif';
+      }
+      else if (stage.contains('hollow') || stage.contains('twist') || stage.contains('russian')) {
+        return 'https://media1.popsugar-assets.com/files/thumbor/2iKsfM5PV4WjulvNvZ3hmkNc3Dw/fit-in/1024x1024/filters:format_auto-!!-:strip_icc-!!-/2020/12/01/844/n/1922729/eda91fe4b67938a4_IMB_MVu242/i/Circuit-4-Exercise-4-Russian-Twist.GIF';
+      }
+      else if (stage.contains('row')) {
+        return 'https://www.nourishmovelove.com/wp-content/uploads/2023/08/Split-Lunge-Hold-and-Single-Arm-Row.gif';
+      }
+      else if (stage.contains('pick up squats')) {
+        return 'https://www.nourishmovelove.com/wp-content/uploads/2023/08/Kettlebell-Pick-Up-Squats.gif';
+      }
+      else if (stage.contains('staggered')) {
+        return 'https://www.nourishmovelove.com/wp-content/uploads/2023/08/Staggered-Deadlift.gif';
+      }
+      else if (stage.contains('alt clean & front squat')) {
+        return 'https://www.nourishmovelove.com/wp-content/uploads/2023/08/Kettlebell-Pick-Up-Squats.gif';
+      }
+      else if (stage.contains('curl') || stage.contains('bicep')) {
+        return 'https://www.nourishmovelove.com/wp-content/uploads/2023/08/Lateral-Lunge-and-Bicep-Curl.gif';
+      }
+      else if (stage.contains('skull') || stage.contains('tricep') || stage.contains('bridge')) {
+        return 'https://www.nourishmovelove.com/wp-content/uploads/2023/08/Glute-Bridge-and-Tricep-Skull-Crushers.gif';
+      }
+      else if (stage.contains('pull through') || stage.contains('plank')) {
+        return 'https://www.nourishmovelove.com/wp-content/uploads/2023/08/Push-Up-and-Kettlebell-Pull-Through.gif';
+      }
+      else if (stage.contains('march') || stage.contains('world')) {
+        return 'https://www.nourishmovelove.com/wp-content/uploads/2023/08/Around-The-World-Clean-and-Uneven-March.gif';
+      }
+
+      // -- EXISTING LOGIC --
+      else if (stage.contains('halos')) {
         return 'https://www.garagegymreviews.com/wp-content/uploads/2023/04/kettlebell-halo.gif';
       }
       else if (stage.contains('clean')) {
         return 'https://i0.wp.com/www.strengthlog.com/wp-content/uploads/2025/03/Kettlebell-Clean.gif';
       }
-
       else if (stage.contains('slingshots')) {
         return 'https://www.garagegymreviews.com/wp-content/uploads/2023/05/kettlebell-slingshot.gif';
       }
@@ -54,7 +87,7 @@ class GifRepository {
       else if (stage.contains('deadlift')) {
         return 'https://www.garagegymreviews.com/wp-content/uploads/2023/11/Kettlebell-sumo-deadlift.gif';
       }
-      else if (stage.contains('overhead')) {
+      else if (stage.contains('overhead') || stage.contains('shoulder press')) {
         return 'https://www.garagegymreviews.com/wp-content/uploads/2023/04/Kettlebell-Press-1.gif';
       }
       else if (stage.contains('lunge')) {
@@ -67,7 +100,6 @@ class GifRepository {
         return 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExN2NzbXcwNnYwZHlka3Q4a3lqdTNlMXcza3c5eWp4cXptMmI5a252dSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ZGmne7bRFBawmz5Gcr/giphy.gif';
       }
     }
-
     return 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHltdTdpYXhidDZ5ejhyMnp3M3JxdWpyYmNxajA4bGp5bDRrbGp3aCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/YWqlvTcGnT6JN0ZggR/giphy.gif';
   }
 }

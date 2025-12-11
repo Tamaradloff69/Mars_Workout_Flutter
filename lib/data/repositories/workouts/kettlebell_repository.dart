@@ -42,35 +42,36 @@ Workout _nmlHiitWorkout() {
   void addCircuit(String cName, String strengthName, String strengthDesc, String powerName, String powerDesc, {bool isUnilateral = false}) {
     // Set 1
     stages.add(WorkoutStage(
-        name: '$cName: Strength (Set 1)',
+      // CHANGE: Use strengthName instead of generic "Strength" so GIF repo can find keywords
+        name: '$strengthName (Set 1)',
         duration: const Duration(seconds: 40),
-        description: isUnilateral ? '$strengthName (RIGHT/First Side)\n$strengthDesc' : '$strengthName\n$strengthDesc'
+        description: isUnilateral ? '(RIGHT/First Side)\n$strengthDesc' : strengthDesc
     ));
     stages.add(const WorkoutStage(name: 'Rest', duration: Duration(seconds: 20), description: 'Breathe. Prepare for power.'));
 
     stages.add(WorkoutStage(
-        name: '$cName: Power (Set 1)',
+      // CHANGE: Use powerName instead of generic "Power"
+        name: '$powerName (Set 1)',
         duration: const Duration(seconds: 30),
-        description: isUnilateral ? '$powerName (RIGHT/First Side)\n$powerDesc' : '$powerName\n$powerDesc'
+        description: isUnilateral ? '(RIGHT/First Side)\n$powerDesc' : powerDesc
     ));
     stages.add(const WorkoutStage(name: 'Rest', duration: Duration(seconds: 10), description: 'Quick shake out.'));
 
     // Set 2
     stages.add(WorkoutStage(
-        name: '$cName: Strength (Set 2)',
+        name: '$strengthName (Set 2)',
         duration: const Duration(seconds: 40),
-        description: isUnilateral ? '$strengthName (LEFT/Second Side)\n$strengthDesc' : '$strengthName\n$strengthDesc'
+        description: isUnilateral ? '(LEFT/Second Side)\n$strengthDesc' : strengthDesc
     ));
     stages.add(const WorkoutStage(name: 'Rest', duration: Duration(seconds: 20), description: 'Recover.'));
 
     stages.add(WorkoutStage(
-        name: '$cName: Power (Set 2)',
+        name: '$powerName (Set 2)',
         duration: const Duration(seconds: 30),
-        description: isUnilateral ? '$powerName (LEFT/Second Side)\n$powerDesc' : '$powerName\n$powerDesc'
+        description: isUnilateral ? '(LEFT/Second Side)\n$powerDesc' : powerDesc
     ));
     stages.add(const WorkoutStage(name: 'Circuit Rest', duration: Duration(seconds: 30), description: 'Longer rest before next circuit. Grab water.'));
   }
-
   // --- CIRCUIT 1: Squats ---
   addCircuit(
       'Circuit 1',
