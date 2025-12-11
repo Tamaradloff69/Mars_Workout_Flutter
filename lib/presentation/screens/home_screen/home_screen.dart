@@ -8,7 +8,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: WorkoutType.values.length - 1,
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Mars Workout"),
@@ -18,6 +18,7 @@ class HomeScreen extends StatelessWidget {
               Tab(icon: Icon(Icons.directions_bike), text: "Cycling"),
               Tab(icon: Icon(Icons.rowing), text: "Rowing"),
               Tab(icon: Icon(Icons.fitness_center), text: "Kettlebell"),
+              Tab(icon: Icon(Icons.directions_run), text: "Elliptical"),
             ],
           ),
         ),
@@ -27,6 +28,7 @@ class HomeScreen extends StatelessWidget {
               PlanListScreen(workoutType: WorkoutType.cycling),
               PlanListScreen(workoutType: WorkoutType.rowing),
               PlanListScreen(workoutType: WorkoutType.kettleBell),
+              PlanListScreen(workoutType: WorkoutType.elliptical),
             ],
           ),
         ),

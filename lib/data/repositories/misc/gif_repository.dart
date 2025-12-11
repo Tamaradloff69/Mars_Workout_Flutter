@@ -103,6 +103,15 @@ class GifRepository {
         return 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExN2NzbXcwNnYwZHlka3Q4a3lqdTNlMXcza3c5eWp4cXptMmI5a252dSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ZGmne7bRFBawmz5Gcr/giphy.gif';
       }
     }
+    if (workoutType == WorkoutType.elliptical) {
+      if (stage.contains('warm') || stage.contains('cool') ) {
+        return 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNTdqMWxxc2hieGppZjR1a3lwZ2JyNTVhd25hbmhlZ3RoMGFlOWp1aSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/EzjCaYFnApVy8/giphy.gif';
+      }
+      else if (stage.contains('sprint') || stage.contains('fast') || stage.contains('max') || stage.contains('hard')) {
+        return 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWg3aXIwcHEwNzBpN2J6MGw2OWl0eDh1cWc5NXE1bDRsMGg4anV3byZlcD12MV9naWZzX3NlYXJjaCZjdD1n/mBBCFnAf0BgRAQWO8k/giphy.gif';
+      }
+      return 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWg3aXIwcHEwNzBpN2J6MGw2OWl0eDh1cWc5NXE1bDRsMGg4anV3byZlcD12MV9naWZzX3NlYXJjaCZjdD1n/2grhtvGDP6uC7dIyw4/giphy.gif';
+    }
     return 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHltdTdpYXhidDZ5ejhyMnp3M3JxdWpyYmNxajA4bGp5bDRrbGp3aCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/YWqlvTcGnT6JN0ZggR/giphy.gif';
   }
 }
