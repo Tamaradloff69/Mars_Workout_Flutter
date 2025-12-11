@@ -110,7 +110,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               for (var s in widget.workout.stages) {
                 totalMins += s.duration.inMinutes;
               }
-              
+
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => WorkoutCompletedScreen(

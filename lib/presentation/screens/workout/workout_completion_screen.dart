@@ -22,27 +22,27 @@ class WorkoutCompletedScreen extends StatelessWidget {
     String titleText;
     String subText;
     Color primaryColor;
-    IconData icon;
+    String icon;
 
     if (isPlanComplete) {
       titleText = "PLAN CONQUERED!";
       subText = "You have finished the entire program. Incredible work!";
       primaryColor = Colors.amber;
-      icon = Icons.emoji_events_rounded;
+      icon = 'https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMXV6a2h1c2N3bTFtOWxkOWZuNDc5dXVrMTRuaTVnamQwcXd0aXN1OSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3Gm15eZOsNk0tptIuG/giphy.gif';
     } else if (isWeekComplete) {
       titleText = "WEEK CRUSHED!";
       subText = "Another week down. You're getting stronger.";
       primaryColor = Colors.purple;
-      icon = Icons.star_rounded;
+      icon = 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3cW94YndpcGY0bTV0cWZ2OG1tcDl5eW5ybmNkYjdja3hxODM5NTRhdSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/4sPHesuyPZHRvGbDc9/giphy.gif';
     } else {
       titleText = "WORKOUT COMPLETE!";
       subText = "You crushed $workoutTitle.";
       primaryColor = theme.colorScheme.tertiary;
-      icon = Icons.check_circle_rounded;
+      icon = 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3ZGNoaGdsaWRzc24zZHluOTM4bzBqMzlqeXRoczExcnd4MmcxMHg3OCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/tf9jjMcO77YzV4YPwE/giphy.gif';
     }
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -56,11 +56,11 @@ class WorkoutCompletedScreen extends StatelessWidget {
                     clipBehavior: Clip.antiAlias,
                     children: [
                       if (isPlanComplete || isWeekComplete)
-                        Lottie.asset('assets/lottie/confetti_animation.json', repeat: false),
+                        Lottie.asset('assets/lottie/confetti_animation.json', repeat: isPlanComplete ? true : false),
                       Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(icon, size: 120, color: primaryColor),
+                          Image.network(icon),
                           const SizedBox(height: 32),
 
                           // Title
@@ -77,7 +77,9 @@ class WorkoutCompletedScreen extends StatelessWidget {
                           // Subtext
                           Text(
                             subText,
-                            style: theme.textTheme.bodyLarge,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: Colors.grey[700]
+                            ),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 8),
