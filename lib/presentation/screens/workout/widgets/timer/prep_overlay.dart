@@ -31,7 +31,7 @@ class PrepOverlay extends StatelessWidget {
             : 0.0;
 
         final titleText = isPrep ? "GET READY" : "REST";
-        final activeColor = isPrep ? Colors.orange : Colors.blueAccent; // Distinct color for rest
+        final activeColor = isPrep ? Colors.orange : Colors.white;
 
         String nextUpName = "";
         if (isPrep) {
