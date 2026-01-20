@@ -9,6 +9,7 @@ import 'package:mars_workout_app/presentation/screens/workout/widgets/stage_info
 import 'package:mars_workout_app/presentation/screens/workout/widgets/timer/linear_timer_display.dart';
 import 'package:mars_workout_app/presentation/screens/workout/widgets/timer/prep_overlay.dart'; // Import this
 import 'package:mars_workout_app/presentation/screens/workout/widgets/timer/timer_widget.dart';
+import 'package:mars_workout_app/presentation/screens/workout/widgets/workout_video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 class WorkoutScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class WorkoutScreen extends StatefulWidget {
 }
 
 class _WorkoutScreenState extends State<WorkoutScreen> {
+  static const Duration _youtubeThreshold = Duration(minutes: 10);
   @override
   void initState() {
     super.initState();
@@ -48,45 +50,51 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final totalDuration = widget.workout.stages.fold(Duration.zero, (prev, element) => prev + element.duration);
+    final useYoutube = totalDuration > _youtubeThreshold;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.workout.title), elevation: 0, foregroundColor: Colors.black),
-      // WRAP BODY IN STACK
       body: Stack(
         children: [
-          // 1. ORIGINAL WORKOUT UI (Bottom Layer)
+          // 1. Main workout UI
           Column(
             children: [
               Expanded(
                 flex: 4,
                 child: RepaintBoundary(
-                  child: BlocBuilder<TimerBloc, TimerState>(
-                    buildWhen: (previous, current) => previous.currentStageIndex != current.currentStageIndex,
-                    builder: (context, state) {
-                      final gifUrl = GifRepository.getGifUrl(widget.workoutType, state.currentStage.name);
+                  child: useYoutube
+                      ? WorkoutVideoSection(
+                          workout: widget.workout,
+                          planDayId: widget.planDayId,
+                          workoutType: widget.workoutType,
+                        )
+                      : BlocBuilder<TimerBloc, TimerState>(
+                          buildWhen: (previous, current) => previous.currentStageIndex != current.currentStageIndex,
+                          builder: (context, state) {
+                            final gifUrl = GifRepository.getGifUrl(widget.workoutType, state.currentStage.name);
 
-                      // Preload next stage GIF when stage changes
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _preloadNextGif(context, state.currentStageIndex);
-                      });
+                            // Preload next stage GIF when stage changes
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              _preloadNextGif(context, state.currentStageIndex);
+                            });
 
-                      return Container(
-                        width: double.infinity,
-                        color: Colors.grey.shade100,
-                        child: CachedNetworkImage(
-                          imageUrl: gifUrl,
-                          fit: BoxFit.contain,
-                          placeholder: (context, url) => Center(child: CircularProgressIndicator(color: theme.primaryColor)),
-                          errorWidget: (context, url, error) => Center(child: Icon(Icons.fitness_center, size: 64, color: Colors.grey.shade100)),
-                          memCacheWidth: 800,
-                          memCacheHeight: 800,
+                            return Container(
+                              width: double.infinity,
+                              color: Colors.grey.shade100,
+                              child: CachedNetworkImage(
+                                imageUrl: gifUrl,
+                                fit: BoxFit.contain,
+                                placeholder: (context, url) => Center(child: CircularProgressIndicator(color: theme.primaryColor)),
+                                errorWidget: (context, url, error) => Center(child: Icon(Icons.fitness_center, size: 64, color: Colors.grey.shade100)),
+                                memCacheWidth: 800,
+                                memCacheHeight: 800,
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
               ),
-
               Expanded(
                 flex: 6,
                 child: Container(

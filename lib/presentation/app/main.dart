@@ -10,6 +10,10 @@ import '../../logic/bloc/plan/plan_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // 2. MAKE SYSTEM BARS TRANSPARENT

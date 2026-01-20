@@ -6,6 +6,7 @@ import 'package:mars_workout_app/data/models/workout_model.dart';
 import 'package:mars_workout_app/data/repositories/workouts/workout_repository.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/timer/timer_bloc.dart';
+import 'package:mars_workout_app/logic/cubit/workout_video_cubit.dart';
 import 'package:mars_workout_app/presentation/screens/workout/completion/workout_completion_screen.dart';
 import 'package:mars_workout_app/presentation/screens/workout/workout_screen.dart';
 
@@ -21,8 +22,11 @@ class WorkoutPage extends StatelessWidget {
     // Cache plans once to avoid repeated expensive calls
     final allPlans = WorkoutRepository().getAllPlans();
 
-    return BlocProvider<TimerBloc>(
-      create: (context) => TimerBloc(workout.stages)..add(StartTimer()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<TimerBloc>(create: (context) => TimerBloc(workout.stages)..add(StartTimer())),
+        BlocProvider<WorkoutVideoCubit>(create: (_) => WorkoutVideoCubit()),
+      ],
       child: BlocListener<TimerBloc, TimerState>(
         listener: (context, state) {
           // 2. Workout Finished Logic
