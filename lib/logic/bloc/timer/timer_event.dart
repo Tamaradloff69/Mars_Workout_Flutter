@@ -1,6 +1,5 @@
 part of 'timer_bloc.dart';
 
-
 class TimerEvent extends Equatable {
   const TimerEvent();
 

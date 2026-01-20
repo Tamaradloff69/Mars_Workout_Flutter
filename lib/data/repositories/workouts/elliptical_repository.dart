@@ -31,45 +31,23 @@ Workout _tabataWorkout({required int rounds}) {
   List<WorkoutStage> stages = [];
 
   // Warm Up
-  stages.add(const WorkoutStage(
-      name: 'Warm-up',
-      duration: Duration(minutes: 5),
-      description: 'Resistance 3/10. Get legs moving comfortably. Focus on smooth, full circles.'));
+  stages.add(const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Resistance 3/10. Get legs moving comfortably. Focus on smooth, full circles.'));
 
   for (int r = 1; r <= rounds; r++) {
     for (int i = 1; i <= 8; i++) {
-      stages.add(WorkoutStage(
-          name: 'SPRINT! ($i/8)',
-          duration: const Duration(seconds: 20),
-          description: 'Max resistance you can handle while keeping RPM > 80. Use the moving handles and drive hard with arms and legs. Go ALL OUT.'
-      ));
-      stages.add(const WorkoutStage(
-          name: 'Rest',
-          duration: Duration(seconds: 10),
-          description: 'Complete stop or very slow pedal. Hands on stationary handles. Open your chest and breathe.'
-      ));
+      stages.add(WorkoutStage(name: 'SPRINT! ($i/8)', duration: const Duration(seconds: 20), description: 'Max resistance you can handle while keeping RPM > 80. Use the moving handles and drive hard with arms and legs. Go ALL OUT.'));
+      stages.add(const WorkoutStage(name: 'Rest', duration: Duration(seconds: 10), description: 'Complete stop or very slow pedal. Hands on stationary handles. Open your chest and breathe.'));
     }
     // Rest between full Tabata rounds
     if (r < rounds) {
-      stages.add(const WorkoutStage(
-          name: 'Recovery Paddle',
-          duration: Duration(minutes: 2),
-          description: 'Resistance 3/10. Slow down, sip water, and lower heart rate before the next round.'
-      ));
+      stages.add(const WorkoutStage(name: 'Recovery Paddle', duration: Duration(minutes: 2), description: 'Resistance 3/10. Slow down, sip water, and lower heart rate before the next round.'));
     }
   }
 
   // Cool Down
-  stages.add(const WorkoutStage(
-      name: 'Cool-down',
-      duration: Duration(minutes: 5),
-      description: 'Easy pace. Let heart rate drop gradually. Do not stop suddenly.'));
+  stages.add(const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: 'Easy pace. Let heart rate drop gradually. Do not stop suddenly.'));
 
-  return Workout(
-    title: 'Tabata: $rounds Round(s)',
-    description: '20s Max Effort / 10s Rest x 8. High intensity.',
-    stages: stages,
-  );
+  return Workout(title: 'Tabata: $rounds Round(s)', description: '20s Max Effort / 10s Rest x 8. High intensity.', stages: stages);
 }
 
 // ==============================================================================
@@ -102,21 +80,10 @@ Workout _speedIntervals() {
     title: 'Speed Intervals (30s/30s)',
     description: 'Classic 1:1 work-to-rest ratio.',
     stages: [
-      const WorkoutStage(
-          name: 'Warm-up',
-          duration: Duration(minutes: 5),
-          description: 'Start slow. Incline 5. Resistance 3.'),
-      for(int i=0; i<10; i++) ...[
-        const WorkoutStage(
-            name: 'High Resistance Push',
-            duration: Duration(seconds: 30),
-            description: 'Resistance 7-8/10. Focus on the PUSH phase of the stride. Keep torso upright. Do not lean on the console.'
-        ),
-        const WorkoutStage(
-            name: 'Low Resistance Spin',
-            duration: Duration(seconds: 30),
-            description: 'Drop resistance to 3/10. Keep feet moving fast but light. Flush the legs.'
-        ),
+      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Start slow. Incline 5. Resistance 3.'),
+      for (int i = 0; i < 10; i++) ...[
+        const WorkoutStage(name: 'High Resistance Push', duration: Duration(seconds: 30), description: 'Resistance 7-8/10. Focus on the PUSH phase of the stride. Keep torso upright. Do not lean on the console.'),
+        const WorkoutStage(name: 'Low Resistance Spin', duration: Duration(seconds: 30), description: 'Drop resistance to 3/10. Keep feet moving fast but light. Flush the legs.'),
       ],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: 'Gradually lower heart rate.'),
     ],
@@ -149,27 +116,11 @@ Workout _intervals_30_20_10_() {
     description: '30s Moderate, 20s Hard, 10s Sprint. Repeat 5 times.',
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5)),
-      for(int i=0; i<5; i++) ...[
-        const WorkoutStage(
-            name: 'Moderate Pace',
-            duration: Duration(seconds: 30),
-            description: 'Resistance 5/10. Conversational pace. Focus on posture.'
-        ),
-        const WorkoutStage(
-            name: 'Hard Pace',
-            duration: Duration(seconds: 20),
-            description: 'Resistance 7/10. Labored breathing. Lengthen your stride.'
-        ),
-        const WorkoutStage(
-            name: 'SPRINT',
-            duration: Duration(seconds: 10),
-            description: 'Resistance 9/10. Max effort! Drive handles back and forth aggressively.'
-        ),
-        const WorkoutStage(
-            name: 'Recovery',
-            duration: Duration(minutes: 1),
-            description: 'Catch your breath. Lower resistance.'
-        ),
+      for (int i = 0; i < 5; i++) ...[
+        const WorkoutStage(name: 'Moderate Pace', duration: Duration(seconds: 30), description: 'Resistance 5/10. Conversational pace. Focus on posture.'),
+        const WorkoutStage(name: 'Hard Pace', duration: Duration(seconds: 20), description: 'Resistance 7/10. Labored breathing. Lengthen your stride.'),
+        const WorkoutStage(name: 'SPRINT', duration: Duration(seconds: 10), description: 'Resistance 9/10. Max effort! Drive handles back and forth aggressively.'),
+        const WorkoutStage(name: 'Recovery', duration: Duration(minutes: 1), description: 'Catch your breath. Lower resistance.'),
       ],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)),
     ],
@@ -205,26 +156,10 @@ Workout _mountainClimb() {
     description: 'Progressively increasing resistance/incline.',
     stages: [
       WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Flat incline (0-5). Low resistance.'),
-      WorkoutStage(
-          name: 'Base Incline',
-          duration: Duration(minutes: 3),
-          description: 'Increase incline to 10-15. Resistance 5. Feel the shift to your hamstrings.'
-      ),
-      WorkoutStage(
-          name: 'Steep Climb',
-          duration: Duration(minutes: 3),
-          description: 'Increase incline to 20+. Resistance 7. Press down through your heels. Do not lift your toes.'
-      ),
-      WorkoutStage(
-          name: 'Plateau (Rest)',
-          duration: Duration(minutes: 2),
-          description: 'Keep incline high, lower resistance to 3. Recover.'
-      ),
-      WorkoutStage(
-          name: 'Summit Push',
-          duration: Duration(minutes: 2),
-          description: 'Max incline. Max sustainable resistance. Hold stationary handles and lean back slightly to isolate glutes.'
-      ),
+      WorkoutStage(name: 'Base Incline', duration: Duration(minutes: 3), description: 'Increase incline to 10-15. Resistance 5. Feel the shift to your hamstrings.'),
+      WorkoutStage(name: 'Steep Climb', duration: Duration(minutes: 3), description: 'Increase incline to 20+. Resistance 7. Press down through your heels. Do not lift your toes.'),
+      WorkoutStage(name: 'Plateau (Rest)', duration: Duration(minutes: 2), description: 'Keep incline high, lower resistance to 3. Recover.'),
+      WorkoutStage(name: 'Summit Push', duration: Duration(minutes: 2), description: 'Max incline. Max sustainable resistance. Hold stationary handles and lean back slightly to isolate glutes.'),
       WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: 'Flat incline, easy spin.'),
     ],
   );
@@ -236,16 +171,8 @@ Workout _reversePedalWorkout() {
     description: 'Alternating forward and backward motion.',
     stages: [
       WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5)),
-      WorkoutStage(
-          name: 'Forward Climb',
-          duration: Duration(minutes: 3),
-          description: 'High resistance. Lean slightly forward to engage quads.'
-      ),
-      WorkoutStage(
-          name: 'Reverse Pedal',
-          duration: Duration(minutes: 2),
-          description: 'Pedal backwards. "Sit" back into the movement like a shallow squat. Keep chest up. Intense quad/hamstring burn.'
-      ),
+      WorkoutStage(name: 'Forward Climb', duration: Duration(minutes: 3), description: 'High resistance. Lean slightly forward to engage quads.'),
+      WorkoutStage(name: 'Reverse Pedal', duration: Duration(minutes: 2), description: 'Pedal backwards. "Sit" back into the movement like a shallow squat. Keep chest up. Intense quad/hamstring burn.'),
       WorkoutStage(name: 'Forward Climb', duration: Duration(minutes: 3), description: 'Recover form. Smooth stride.'),
       WorkoutStage(name: 'Reverse Pedal', duration: Duration(minutes: 2), description: 'Backwards again. Hold stationary handles for balance.'),
       WorkoutStage(name: 'Forward Climb', duration: Duration(minutes: 3), description: 'Final push forward.'),

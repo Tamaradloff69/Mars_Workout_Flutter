@@ -9,7 +9,6 @@ part 'plan_state.dart';
 
 class PlanBloc extends HydratedBloc<PlanEvent, PlanState> {
   PlanBloc() : super(const PlanState()) {
-
     on<StartPlan>((event, emit) {
       final updatedMap = Map<String, String>.from(state.activePlans);
       updatedMap[event.type.toString()] = event.planId;
@@ -35,14 +34,11 @@ class PlanBloc extends HydratedBloc<PlanEvent, PlanState> {
       }
 
       // 2. Filter the current list to exclude those IDs
-      final updatedCompletedIds = state.completedDayIds
-          .where((id) => !planDayIds.contains(id))
-          .toList();
+      final updatedCompletedIds = state.completedDayIds.where((id) => !planDayIds.contains(id)).toList();
 
       // 3. Emit new state (Progress cleared, but plan remains Active)
       emit(state.copyWith(completedDayIds: updatedCompletedIds));
     });
-
   }
 
   @override

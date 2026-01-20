@@ -12,22 +12,20 @@ class HomeScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Mars Workout"),
-          bottom: TabBar(
+          bottom: const TabBar(
             dividerColor: Colors.transparent,
             tabs: [
               Tab(icon: Icon(Icons.directions_bike), text: "Cycle"),
               Tab(icon: Icon(Icons.rowing), text: "Row"),
-              Tab(icon: Icon(Icons.fitness_center), text: "Strength"),
               Tab(icon: Icon(Icons.directions_run), text: "Elliptical"),
             ],
           ),
         ),
-        body: Center(
+        body: const Center(
           child: TabBarView(
             children: [
               PlanListScreen(workoutType: WorkoutType.cycling),
               PlanListScreen(workoutType: WorkoutType.rowing),
-              PlanListScreen(workoutType: WorkoutType.kettleBell),
               PlanListScreen(workoutType: WorkoutType.elliptical),
             ],
           ),

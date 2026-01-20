@@ -48,6 +48,8 @@ class PlanDetailScreen extends StatelessWidget {
           builder: (context, state) {
             // Check if THIS plan is the active one for its type
             final isActive = state.isPlanActive(plan.id, plan.workoutType);
+            // Cache completedDayIds as Set for faster lookups
+            final completedDayIdsSet = Set<String>.from(state.completedDayIds);
 
             return Column(
               children: [
@@ -92,19 +94,19 @@ class PlanDetailScreen extends StatelessWidget {
                     // Visual cue: Slight fade if inactive, but still readable
                     opacity: isActive ? 1.0 : 0.8,
                     child: ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 20,),
+                      padding: const EdgeInsets.only(bottom: 20),
                       itemCount: plan.weeks.length,
                       itemBuilder: (context, index) {
                         final week = plan.weeks[index];
 
-                        final isWeekComplete = week.days.every((day) => state.completedDayIds.contains(day.id));
+                        final isWeekComplete = week.days.every((day) => completedDayIdsSet.contains(day.id));
 
                         // Locking Logic: Only applies if the plan IS active.
                         // If inactive, we let them see everything (preview mode).
                         bool isWeekLocked = false;
                         if (isActive && index > 0) {
                           final previousWeek = plan.weeks[index - 1];
-                          final isPrevWeekComplete = previousWeek.days.every((day) => state.completedDayIds.contains(day.id));
+                          final isPrevWeekComplete = previousWeek.days.every((day) => completedDayIdsSet.contains(day.id));
                           if (!isPrevWeekComplete) {
                             isWeekLocked = true;
                           }
@@ -159,7 +161,7 @@ class PlanDetailScreen extends StatelessWidget {
                                 initiallyExpanded: isActive && index == 0 && !isWeekComplete,
 
                                 children: week.days.map((day) {
-                                  final isDayComplete = state.completedDayIds.contains(day.id);
+                                  final isDayComplete = completedDayIdsSet.contains(day.id);
 
                                   return ListTile(
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),

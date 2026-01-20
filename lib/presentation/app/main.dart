@@ -13,12 +13,7 @@ void main() async {
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // 2. MAKE SYSTEM BARS TRANSPARENT
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent, // Transparent status bar
-    statusBarIconBrightness: Brightness.dark, // Dark icons (for light background)
-    systemNavigationBarColor: Colors.transparent, // Transparent nav bar
-    systemNavigationBarIconBrightness: Brightness.dark, // Dark icons
-  ));
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.dark, systemNavigationBarColor: Colors.transparent, systemNavigationBarIconBrightness: Brightness.dark));
   HydratedBloc.storage = await HydratedStorage.build(storageDirectory: await getApplicationDocumentsDirectory());
   await SoundService().init();
   runApp(const MyApp());

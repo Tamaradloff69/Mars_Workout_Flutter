@@ -5,6 +5,7 @@ import 'package:mars_workout_app/data/models/workout_model.dart';
 
 part 'timer_event.dart';
 part 'timer_state.dart';
+
 class TimerBloc extends Bloc<TimerEvent, TimerState> {
   StreamSubscription<int>? _tickerSubscription;
 
@@ -66,7 +67,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     }
   }
 
-// Inside _onNextStage method:
+  // Inside _onNextStage method:
   void _onNextStage(NextStage event, Emitter<TimerState> emit) {
     // 1. Check if workout is finished
     if (state.isLastStage) {
@@ -82,15 +83,17 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
 
     // 3. Check if the next stage is a "Rest" stage
     // We check for "rest" or "recover" to be safe
-    final isRestStage = nextStage.name.toLowerCase().contains('rest') ||
-        nextStage.name.toLowerCase().contains('recover') || nextStage.name.toLowerCase().contains('cool');
+    final isRestStage = nextStage.name.toLowerCase().contains('rest') || nextStage.name.toLowerCase().contains('recover') || nextStage.name.toLowerCase().contains('cool');
 
     // 4. Transition
-    emit(state.copyWith(
-      currentStageIndex: nextIndex,
-      elapsed: Duration.zero,
-      // If it is a rest stage, SKIP prep (isPrep = false).
-      // Otherwise, show prep (isPrep = true).
-      isPrep: !isRestStage,
-    ));
-  }}
+    emit(
+      state.copyWith(
+        currentStageIndex: nextIndex,
+        elapsed: Duration.zero,
+        // If it is a rest stage, SKIP prep (isPrep = false).
+        // Otherwise, show prep (isPrep = true).
+        isPrep: !isRestStage,
+      ),
+    );
+  }
+}

@@ -1,1 +1,1 @@
-enum WorkoutType { cycling, rowing, kettleBell, elliptical, other }
+enum WorkoutType { cycling, rowing, elliptical, other }

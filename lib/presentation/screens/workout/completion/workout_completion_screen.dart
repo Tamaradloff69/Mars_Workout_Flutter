@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class WorkoutCompletedScreen extends StatelessWidget {
   final String workoutTitle;
@@ -7,13 +8,7 @@ class WorkoutCompletedScreen extends StatelessWidget {
   final bool isWeekComplete;
   final bool isPlanComplete;
 
-  const WorkoutCompletedScreen({
-    super.key,
-    required this.workoutTitle,
-    required this.totalMinutes,
-    this.isWeekComplete = false,
-    this.isPlanComplete = false,
-  });
+  const WorkoutCompletedScreen({super.key, required this.workoutTitle, required this.totalMinutes, this.isWeekComplete = false, this.isPlanComplete = false});
 
   @override
   Widget build(BuildContext context) {
@@ -55,21 +50,23 @@ class WorkoutCompletedScreen extends StatelessWidget {
                     alignment: AlignmentGeometry.center,
                     clipBehavior: Clip.antiAlias,
                     children: [
-                      if (isPlanComplete || isWeekComplete)
-                        Lottie.asset('assets/lottie/confetti_animation.json', repeat: isPlanComplete ? true : false),
+                      if (isPlanComplete || isWeekComplete) Lottie.asset('assets/lottie/confetti_animation.json', repeat: isPlanComplete ? true : false),
                       Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Image.network(icon),
+                          CachedNetworkImage(
+                            imageUrl: icon,
+                            placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                            errorWidget: (context, url, error) => const Icon(Icons.fitness_center, size: 64),
+                            memCacheWidth: 400,
+                            memCacheHeight: 400,
+                          ),
                           const SizedBox(height: 32),
 
                           // Title
                           Text(
                             titleText,
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                            ),
+                            style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold, color: primaryColor),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 16),
@@ -77,9 +74,7 @@ class WorkoutCompletedScreen extends StatelessWidget {
                           // Subtext
                           Text(
                             subText,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: Colors.grey[700]
-                            ),
+                            style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[700]),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 8),
@@ -87,14 +82,8 @@ class WorkoutCompletedScreen extends StatelessWidget {
                           // Stats
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(20)
-                            ),
-                            child: Text(
-                              "Session Time: $totalMinutes mins",
-                              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
-                            ),
+                            decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(20)),
+                            child: Text("Session Time: $totalMinutes mins", style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[700])),
                           ),
 
                           const SizedBox(height: 16),
@@ -105,11 +94,11 @@ class WorkoutCompletedScreen extends StatelessWidget {
                             height: 56,
                             child: ElevatedButton(
                               onPressed: () {
-                                Navigator.of(context)..pop()..pop();
+                                Navigator.of(context)
+                                  ..pop()
+                                  ..pop();
                               },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryColor,
-                              ),
+                              style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
                               child: const Text("FINISH"),
                             ),
                           ),

@@ -25,20 +25,8 @@ class TimerState extends Equatable {
     );
   }
 
-  TimerState copyWith({
-    List<WorkoutStage>? stages,
-    int? currentStageIndex,
-    Duration? elapsed,
-    bool? isRunning,
-    bool? isPrep,
-  }) {
-    return TimerState(
-      stages: stages ?? this.stages,
-      currentStageIndex: currentStageIndex ?? this.currentStageIndex,
-      elapsed: elapsed ?? this.elapsed,
-      isRunning: isRunning ?? this.isRunning,
-      isPrep: isPrep ?? this.isPrep,
-    );
+  TimerState copyWith({List<WorkoutStage>? stages, int? currentStageIndex, Duration? elapsed, bool? isRunning, bool? isPrep}) {
+    return TimerState(stages: stages ?? this.stages, currentStageIndex: currentStageIndex ?? this.currentStageIndex, elapsed: elapsed ?? this.elapsed, isRunning: isRunning ?? this.isRunning, isPrep: isPrep ?? this.isPrep);
   }
 
   // Helpers

@@ -36,14 +36,16 @@ class PlanListScreen extends StatelessWidget {
                 shadowColor: null,
                 shape: isActive || progress >= 1.0
                     ? RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                      color: progress >= 1.0
-                          ? theme.colorScheme.tertiary
-                          : isActive ? theme.primaryColor : Colors.transparent,
-                      width: 2
-                  ),
-                )
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: progress >= 1.0
+                              ? theme.colorScheme.tertiary
+                              : isActive
+                              ? theme.primaryColor
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      )
                     : null,
                 elevation: isActive || progress >= 1.0 ? 4 : 1,
                 child: InkWell(
@@ -62,10 +64,7 @@ class PlanListScreen extends StatelessWidget {
                             Expanded(child: Text(plan.title, style: theme.textTheme.titleLarge)),
 
                             // STATUS BADGES
-                            if (progress >= 1.0)
-                              _buildStatusBadge(theme, "Complete", theme.colorScheme.tertiaryContainer, theme.colorScheme.onTertiaryContainer)
-                            else if (isActive)
-                              _buildStatusBadge(theme, "Active", theme.colorScheme.primaryContainer, theme.colorScheme.onPrimaryContainer),
+                            if (progress >= 1.0) _buildStatusBadge(theme, "Complete", theme.colorScheme.tertiaryContainer, theme.colorScheme.onTertiaryContainer) else if (isActive) _buildStatusBadge(theme, "Active", theme.colorScheme.primaryContainer, theme.colorScheme.onPrimaryContainer),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -83,7 +82,9 @@ class PlanListScreen extends StatelessWidget {
                                   backgroundColor: theme.colorScheme.surfaceContainerHighest,
                                   color: progress >= 1.0
                                       ? theme.colorScheme.tertiary
-                                      : isActive ? theme.primaryColor : Colors.grey,
+                                      : isActive
+                                      ? theme.primaryColor
+                                      : Colors.grey,
                                   minHeight: 6,
                                 ),
                               ),
@@ -107,10 +108,7 @@ class PlanListScreen extends StatelessWidget {
   Widget _buildStatusBadge(ThemeData theme, String text, Color bg, Color fg) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20)
-      ),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Text(
         text,
         style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.bold),

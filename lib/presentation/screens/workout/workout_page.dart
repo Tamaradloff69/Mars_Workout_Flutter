@@ -18,11 +18,13 @@ class WorkoutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Cache plans once to avoid repeated expensive calls
+    final allPlans = WorkoutRepository().getAllPlans();
+
     return BlocProvider<TimerBloc>(
       create: (context) => TimerBloc(workout.stages)..add(StartTimer()),
       child: BlocListener<TimerBloc, TimerState>(
         listener: (context, state) {
-
           // 2. Workout Finished Logic
           if (state.isFinished) {
             context.read<PlanBloc>().add(MarkDayAsCompleted(planDayId));
@@ -33,7 +35,6 @@ class WorkoutPage extends StatelessWidget {
 
             bool isWeekFinished = false;
             bool isPlanFinished = false;
-            final allPlans = WorkoutRepository().getAllPlans();
 
             // --- FIX: Get the active plan ID for THIS workout type ---
             String? activePlanId = planBlocState.activePlans[workoutType.toString()];
@@ -42,9 +43,7 @@ class WorkoutPage extends StatelessWidget {
               try {
                 final currentPlan = allPlans.firstWhere((p) => p.id == activePlanId);
 
-                isPlanFinished = currentPlan.weeks.every((week) =>
-                    week.days.every((day) => completedIds.contains(day.id))
-                );
+                isPlanFinished = currentPlan.weeks.every((week) => week.days.every((day) => completedIds.contains(day.id)));
 
                 if (!isPlanFinished) {
                   for (var week in currentPlan.weeks) {
@@ -55,13 +54,11 @@ class WorkoutPage extends StatelessWidget {
                   }
                   if (isWeekFinished) {
                     SoundService().playWeekComplete();
-                  }
-                  else {
+                  } else {
                     SoundService().playWorkoutComplete();
                   }
                 } else {
                   SoundService().playTrainingPlanComplete();
-
                 }
               } catch (e) {
                 print("Plan lookup error: $e");
@@ -75,12 +72,9 @@ class WorkoutPage extends StatelessWidget {
 
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => WorkoutCompletedScreen(
-                workoutTitle: workout.title,
-                totalMinutes: totalMins,
-                isWeekComplete: isWeekFinished,
-                isPlanComplete: isPlanFinished,
-              )),
+              MaterialPageRoute(
+                builder: (_) => WorkoutCompletedScreen(workoutTitle: workout.title, totalMinutes: totalMins, isWeekComplete: isWeekFinished, isPlanComplete: isPlanFinished),
+              ),
             );
           }
         },
