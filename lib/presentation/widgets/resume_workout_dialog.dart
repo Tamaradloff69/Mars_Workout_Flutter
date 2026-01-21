@@ -6,6 +6,7 @@ import 'package:mars_workout_app/logic/bloc/timer/timer_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/workout_session/workout_session_bloc.dart';
 import 'package:mars_workout_app/logic/cubit/workout_video_cubit.dart';
 import 'package:mars_workout_app/presentation/screens/workout/workout_page.dart';
+import 'package:mars_workout_app/presentation/widgets/session_info_card.dart';
 
 class ResumeWorkoutDialog extends StatelessWidget {
   final WorkoutSession session;
@@ -17,12 +18,18 @@ class ResumeWorkoutDialog extends StatelessWidget {
     final theme = Theme.of(context);
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      scrollable: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
-        spacing: 8,
+        spacing: 12,
         children: [
-          Icon(Icons.fitness_center, color: theme.primaryColor),
-          const Text('Resume Workout?'),
+          Icon(Icons.restart_alt_rounded, color: theme.primaryColor, size: 28),
+          const Expanded(
+            child: Text(
+              'Resume Workout?',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
       ),
       content: Column(
@@ -30,68 +37,35 @@ class ResumeWorkoutDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Woops! Seems that you have an unfinished workout:',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  session.workout.title,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.timeline, size: 16, color: Colors.grey.shade600),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        session.getProgressDescription(),
-                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.access_time, size: 16, color: Colors.grey.shade600),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatTimeAgo(session.savedAt),
-                      style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
-                    ),
-                  ],
-                ),
-              ],
+            'You have an unfinished workout session. Would you like to continue where you left off?',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.8),
+              height: 1.4,
             ),
           ),
+          const SizedBox(height: 20),
+          SessionInfoCard(session: session),
         ],
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       actions: [
         TextButton(
           onPressed: () {
             context.read<WorkoutSessionBloc>().add(const ClearWorkoutSession());
             Navigator.of(context).pop();
           },
-          child: Text('Clear', style: TextStyle(color: Colors.grey.shade600)),
+          style: TextButton.styleFrom(
+            foregroundColor: theme.colorScheme.error,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+          child: const Text('Clear'),
         ),
         ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            _resumeWorkout(context, session);
-          },
+          onPressed: () => _handleResume(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: theme.primaryColor,
             foregroundColor: Colors.white,
+            elevation: 0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           ),
@@ -101,22 +75,29 @@ class ResumeWorkoutDialog extends StatelessWidget {
     );
   }
 
-  void _resumeWorkout(BuildContext context, WorkoutSession session) {
-    // Create a TimerBloc with the saved state (stages already have countdown stages from saved session)
+  void _handleResume(BuildContext context) {
+    // Capture dependencies before popping the dialog context
+    final planBloc = context.read<PlanBloc>();
+    final sessionBloc = context.read<WorkoutSessionBloc>();
+    final navigator = Navigator.of(context);
+
+    // Initialize and restore TimerBloc state
     final timerBloc = TimerBloc(session.workout.stages);
-    
-    // Restore the saved state
     timerBloc.add(RestoreTimer(
       currentStageIndex: session.currentStageIndex,
       elapsed: session.elapsed,
     ));
 
-    Navigator.of(context).push(
+    // Close the dialog
+    navigator.pop();
+
+    // Navigate to the workout page
+    navigator.push(
       MaterialPageRoute(
         builder: (_) => MultiBlocProvider(
           providers: [
-            BlocProvider.value(value: context.read<PlanBloc>()),
-            BlocProvider.value(value: context.read<WorkoutSessionBloc>()),
+            BlocProvider.value(value: planBloc),
+            BlocProvider.value(value: sessionBloc),
             BlocProvider<TimerBloc>.value(value: timerBloc),
             BlocProvider<WorkoutVideoCubit>(create: (_) => WorkoutVideoCubit()),
           ],
@@ -128,19 +109,5 @@ class ResumeWorkoutDialog extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatTimeAgo(DateTime dateTime) {
-    final difference = DateTime.now().difference(dateTime);
-    
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} minutes ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} hours ago';
-    } else {
-      return '${difference.inDays} days ago';
-    }
   }
 }

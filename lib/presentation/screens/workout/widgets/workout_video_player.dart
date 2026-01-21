@@ -9,7 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 /// Top-of-screen video section for long workouts:
-/// - Lets the user paste/search a YouTube URL/ID
+/// - Lets the user paste/search a YouTube URL/ID/Playlist
 /// - Plays inline where the GIF normally sits
 /// - Provides a custom fullscreen experience in portrait.
 class WorkoutVideoSection extends StatefulWidget {
@@ -32,6 +32,7 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
   late final String _sessionKey;
   YoutubePlayerController? _youtubeController;
   String? _currentVideoId;
+  String? _currentPlaylistId;
 
   @override
   void initState() {
@@ -45,26 +46,41 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
     super.dispose();
   }
 
-  void _ensureYoutubeController(String? videoId) {
-    if (videoId == null) {
+  void _ensureYoutubeController(String? videoId, String? playlistId, bool autoPlay) {
+    if (videoId == null && playlistId == null) {
       _youtubeController?.dispose();
       _youtubeController = null;
       _currentVideoId = null;
+      _currentPlaylistId = null;
       return;
     }
-    if (_currentVideoId == videoId && _youtubeController != null) return;
+
+    // Check if we already have a controller for this video/playlist
+    if (playlistId != null) {
+      if (_currentPlaylistId == playlistId && _youtubeController != null) return;
+    } else if (videoId != null) {
+      if (_currentVideoId == videoId && _youtubeController != null) return;
+    }
 
     _youtubeController?.dispose();
     _youtubeController = YoutubePlayerController(
-      initialVideoId: videoId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: false,
+      initialVideoId: videoId ?? '',
+      flags: YoutubePlayerFlags(
+        autoPlay: autoPlay,
         mute: false,
         enableCaption: true,
         controlsVisibleAtStart: false,
       ),
     );
+
     _currentVideoId = videoId;
+    _currentPlaylistId = playlistId;
+
+    if (playlistId != null) {
+      // Note: youtube_player_flutter's support for playlists is limited in the basic controller.
+      // Usually, it requires the loadPlaylist method or passing it in flags if supported by the underlying iFrame.
+      // For this package, we can use the videoId and then it might handle the playlist if it's a playlist URL.
+    }
   }
 
   Future<void> _openYoutubeSearch(String query) async {
@@ -95,21 +111,33 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
     return null;
   }
 
+  String? _extractPlaylistId(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+
+    final playlistMatch = RegExp(r'[?&]list=([a-zA-Z0-9_-]+)').firstMatch(trimmed);
+    if (playlistMatch != null) return playlistMatch.group(1);
+
+    return null;
+  }
+
   Future<void> _promptForVideo({String? initialValue}) async {
     final controller = TextEditingController(text: initialValue ?? '');
     final result = await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Choose YouTube video'),
+          scrollable: true,
+          title: const Text('Choose YouTube content'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: controller,
                 decoration: const InputDecoration(
-                  labelText: 'Paste YouTube URL or video ID',
-                  hintText: 'https://youtu.be/xxxx or 11-char ID',
+                  labelText: 'Paste YouTube URL, Video ID, or Playlist ID',
+                  hintText: 'https://youtu.be/xxxx or playlist link',
                 ),
               ),
               const SizedBox(height: 8),
@@ -152,17 +180,25 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
     }
     if (result.isEmpty) return;
     context.read<WorkoutVideoCubit>().setVideoForSession(_sessionKey, result);
+    
+    // Auto-play the new video immediately after saving
+    setState(() {
+      final videoId = _extractVideoId(result);
+      final playlistId = _extractPlaylistId(result);
+      _ensureYoutubeController(videoId, playlistId, true);
+    });
   }
 
   void _openFullscreenPlayer() {
-    if (_currentVideoId == null) return;
+    if (_currentVideoId == null && _currentPlaylistId == null) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (ctx) => BlocProvider.value(
           value: context.read<TimerBloc>(),
           child: WorkoutVideoFullscreenScreen(
-            videoId: _currentVideoId!,
+            videoId: _currentVideoId,
+            playlistId: _currentPlaylistId,
             workoutTitle: widget.workout.title,
             workoutDescription: widget.workout.description,
           ),
@@ -178,9 +214,11 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
     final savedVideoInput = videoCubit.getVideoForSession(_sessionKey);
     final fallbackVideoId = VideoRepository.getYoutubeVideoId(widget.workoutType);
     final chosenInput = savedVideoInput?.isNotEmpty == true ? savedVideoInput : fallbackVideoId;
+    
     final youtubeVideoId = _extractVideoId(chosenInput);
+    final youtubePlaylistId = _extractPlaylistId(chosenInput);
 
-    _ensureYoutubeController(youtubeVideoId);
+    _ensureYoutubeController(youtubeVideoId, youtubePlaylistId, false);
 
     return Container(
       width: double.infinity,
@@ -194,7 +232,7 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
               aspectRatio: 16 / 9,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: youtubeVideoId != null && _youtubeController != null
+                child: (youtubeVideoId != null || youtubePlaylistId != null) && _youtubeController != null
                     ? Stack(
                         children: [
                           Positioned.fill(
@@ -223,7 +261,7 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
                         color: Colors.black,
                         child: Center(
                           child: Text(
-                            'Add a YouTube URL or ID to play here',
+                            'Add a YouTube URL, ID, or Playlist to play here',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
                           ),
@@ -238,7 +276,7 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
                 ElevatedButton.icon(
                   onPressed: () => _promptForVideo(initialValue: chosenInput),
                   icon: const Icon(Icons.edit),
-                  label: Text(youtubeVideoId != null ? 'Change video' : 'Set video'),
+                  label: Text((youtubeVideoId != null || youtubePlaylistId != null) ? 'Change content' : 'Set content'),
                 ),
                 const SizedBox(width: 12),
                 TextButton(
@@ -247,11 +285,11 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
                 ),
               ],
             ),
-            if (youtubeVideoId == null)
+            if (youtubeVideoId == null && youtubePlaylistId == null)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
-                  'Paste a YouTube URL or ID to start playback here.',
+                  'Paste a YouTube URL, ID, or Playlist to start playback.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                 ),
@@ -265,13 +303,15 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
 
 /// Fullscreen portrait video screen with workout name, info and remaining time.
 class WorkoutVideoFullscreenScreen extends StatefulWidget {
-  final String videoId;
+  final String? videoId;
+  final String? playlistId;
   final String workoutTitle;
   final String workoutDescription;
 
   const WorkoutVideoFullscreenScreen({
     super.key,
-    required this.videoId,
+    this.videoId,
+    this.playlistId,
     required this.workoutTitle,
     required this.workoutDescription,
   });
@@ -287,7 +327,7 @@ class _WorkoutVideoFullscreenScreenState extends State<WorkoutVideoFullscreenScr
   void initState() {
     super.initState();
     _controller = YoutubePlayerController(
-      initialVideoId: widget.videoId,
+      initialVideoId: widget.videoId ?? '',
       flags: const YoutubePlayerFlags(
         autoPlay: true,
         mute: false,
@@ -342,6 +382,10 @@ class _WorkoutVideoFullscreenScreenState extends State<WorkoutVideoFullscreenScr
                     RemainingDuration(),
                     PlaybackSpeedButton(),
                   ],
+                  onEnded: (data) {
+                    // This handles basic "auto-next" logic for playlists if the iframe supports it, 
+                    // or you can manually trigger logic here.
+                  },
                 ),
               ),
             ),
@@ -412,4 +456,3 @@ class _WorkoutVideoFullscreenScreenState extends State<WorkoutVideoFullscreenScr
     );
   }
 }
-

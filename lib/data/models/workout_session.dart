@@ -65,6 +65,8 @@ class WorkoutSession extends Equatable {
   /// Get a friendly description of workout progress
   String getProgressDescription() {
     final totalStages = workout.stages.length;
+    if (totalStages == 0) return 'No stages';
+
     final completedStages = currentStageIndex;
     final percentComplete = ((completedStages / totalStages) * 100).round();
     return '$percentComplete% complete - Stage ${currentStageIndex + 1}/$totalStages';

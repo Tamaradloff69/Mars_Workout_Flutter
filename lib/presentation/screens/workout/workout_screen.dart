@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -85,66 +86,85 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         }
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(title: Text(widget.workout.title), elevation: 0, foregroundColor: Colors.black),
-        body: Column(
-          children: [
-            Expanded(
-              flex: 4,
-              child: RepaintBoundary(
-                child: useYoutube
-                    ? WorkoutVideoSection(
-                        workout: widget.workout,
-                        planDayId: widget.planDayId,
-                        workoutType: widget.workoutType,
-                      )
-                    : BlocBuilder<TimerBloc, TimerState>(
-                        buildWhen: (previous, current) => previous.currentStageIndex != current.currentStageIndex,
-                        builder: (context, state) {
-                          // Check if current stage is a countdown
-                          final isCountdown = WorkoutHelper.isCountdownStage(state.currentStage);
-                          
-                          if (isCountdown) {
-                            // Show countdown overlay for "Get Ready" stages
-                            return _buildCountdownOverlay(context, state);
-                          }
-                          
-                          final gifUrl = GifRepository.getGifUrl(widget.workoutType, state.currentStage.name);
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: constraints.maxHeight * 0.4,
+                        child: RepaintBoundary(
+                          child: useYoutube
+                              ? WorkoutVideoSection(
+                                  workout: widget.workout,
+                                  planDayId: widget.planDayId,
+                                  workoutType: widget.workoutType,
+                                )
+                              : BlocBuilder<TimerBloc, TimerState>(
+                                  buildWhen: (previous, current) => previous.currentStageIndex != current.currentStageIndex,
+                                  builder: (context, state) {
+                                    // Check if current stage is a countdown
+                                    final isCountdown = WorkoutHelper.isCountdownStage(state.currentStage);
+                                    
+                                    if (isCountdown) {
+                                      // Show countdown overlay for "Get Ready" stages
+                                      return _buildCountdownOverlay(context, state);
+                                    }
+                                    
+                                    final gifUrl = GifRepository.getGifUrl(widget.workoutType, state.currentStage.name);
 
-                          // Preload next stage GIF when stage changes
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            _preloadNextGif(context, state.currentStageIndex);
-                          });
+                                    // Preload next stage GIF when stage changes
+                                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                                      _preloadNextGif(context, state.currentStageIndex);
+                                    });
 
-                          return Container(
-                            width: double.infinity,
-                            color: Colors.grey.shade100,
-                            child: CachedNetworkImage(
-                              imageUrl: gifUrl,
-                              fit: BoxFit.contain,
-                              placeholder: (context, url) => Center(child: CircularProgressIndicator(color: theme.primaryColor)),
-                              errorWidget: (context, url, error) => Center(child: Icon(Icons.fitness_center, size: 64, color: Colors.grey.shade100)),
-                              memCacheWidth: 800,
-                              memCacheHeight: 800,
-                            ),
-                          );
-                        },
+                                    return Container(
+                                      width: double.infinity,
+                                      color: Colors.grey.shade100,
+                                      child: CachedNetworkImage(
+                                        imageUrl: gifUrl,
+                                        fit: BoxFit.contain,
+                                        placeholder: (context, url) => Center(child: CircularProgressIndicator(color: theme.primaryColor)),
+                                        errorWidget: (context, url, error) => Center(child: Icon(Icons.fitness_center, size: 64, color: Colors.grey.shade100)),
+                                        memCacheWidth: 800,
+                                        memCacheHeight: 800,
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
                       ),
-              ),
-            ),
-            Expanded(
-              flex: 6,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
+                          ),
+                          child: const Column(
+                            children: [
+                              StageInfoAndSegmentBar(),
+                              Spacer(),
+                              LinearTimerDisplay(),
+                              SizedBox(height: 16),
+                              TimerControls(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: const Column(children: [StageInfoAndSegmentBar(), Spacer(), LinearTimerDisplay(), SizedBox(height: 16), TimerControls()]),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
