@@ -1,4 +1,5 @@
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/data/builders/workout_builder.dart';
 import 'package:mars_workout_app/data/models/training_plan.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
 
@@ -76,17 +77,18 @@ TrainingPlan ellipticalHiitPlan() {
 }
 
 Workout _speedIntervals() {
-  return Workout(
+  return WorkoutBuilder.buildSecondIntervals(
     title: 'Speed Intervals (30s/30s)',
     description: 'Classic 1:1 work-to-rest ratio.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Start slow. Incline 5. Resistance 3.'),
-      for (int i = 0; i < 10; i++) ...[
-        const WorkoutStage(name: 'High Resistance Push', duration: Duration(seconds: 30), description: 'Resistance 7-8/10. Focus on the PUSH phase of the stride. Keep torso upright. Do not lean on the console.'),
-        const WorkoutStage(name: 'Low Resistance Spin', duration: Duration(seconds: 30), description: 'Drop resistance to 3/10. Keep feet moving fast but light. Flush the legs.'),
-      ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: 'Gradually lower heart rate.'),
-    ],
+    workSeconds: 30,
+    restSeconds: 30,
+    repetitions: 10,
+    workDescription:
+        'Resistance 7-8/10. Focus on the PUSH phase of the stride. Keep torso upright. Do not lean on the console.',
+    restDescription:
+        'Drop resistance to 3/10. Keep feet moving fast but light. Flush the legs.',
+    warmupDescription: 'Start slow. Incline 5. Resistance 3.',
+    cooldownDescription: 'Gradually lower heart rate.',
   );
 }
 

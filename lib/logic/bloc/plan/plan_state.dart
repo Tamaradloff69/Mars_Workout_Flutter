@@ -5,12 +5,25 @@ final class PlanState extends Equatable {
   // Key: WorkoutType.toString() (e.g., "WorkoutType.cycling")
   // Value: Plan ID (e.g., "bn_150km_classic")
   final Map<String, String> activePlans;
-  final List<String> completedDayIds;
 
-  const PlanState({this.activePlans = const {}, this.completedDayIds = const []});
+  /// Stores completed workout day IDs as a Set for O(1) lookup performance.
+  /// Using Set instead of List significantly improves performance when checking
+  /// if a day is completed, especially for long training plans.
+  final Set<String> completedDayIds;
 
-  PlanState copyWith({Map<String, String>? activePlans, List<String>? completedDayIds}) {
-    return PlanState(activePlans: activePlans ?? this.activePlans, completedDayIds: completedDayIds ?? this.completedDayIds);
+  const PlanState({
+    this.activePlans = const {},
+    this.completedDayIds = const {},
+  });
+
+  PlanState copyWith({
+    Map<String, String>? activePlans,
+    Set<String>? completedDayIds,
+  }) {
+    return PlanState(
+      activePlans: activePlans ?? this.activePlans,
+      completedDayIds: completedDayIds ?? this.completedDayIds,
+    );
   }
 
   // --- LOGIC: Is THIS plan the single active one for its type? ---
@@ -23,10 +36,16 @@ final class PlanState extends Equatable {
   List<Object?> get props => [activePlans, completedDayIds];
 
   Map<String, dynamic> toJson() {
-    return {'activePlans': activePlans, 'completedDayIds': completedDayIds};
+    return {
+      'activePlans': activePlans,
+      'completedDayIds': completedDayIds.toList(), // Convert Set to List for JSON
+    };
   }
 
   factory PlanState.fromJson(Map<String, dynamic> json) {
-    return PlanState(activePlans: Map<String, String>.from(json['activePlans'] ?? {}), completedDayIds: List<String>.from(json['completedDayIds'] ?? []));
+    return PlanState(
+      activePlans: Map<String, String>.from(json['activePlans'] ?? {}),
+      completedDayIds: Set<String>.from(json['completedDayIds'] ?? []), // Convert List to Set
+    );
   }
 }

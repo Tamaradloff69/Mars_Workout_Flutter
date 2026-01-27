@@ -17,11 +17,9 @@ class PlanBloc extends HydratedBloc<PlanEvent, PlanState> {
     });
 
     on<MarkDayAsCompleted>((event, emit) {
-      final updatedList = List<String>.from(state.completedDayIds);
-      if (!updatedList.contains(event.dayId)) {
-        updatedList.add(event.dayId);
-      }
-      emit(state.copyWith(completedDayIds: updatedList));
+      final updatedSet = Set<String>.from(state.completedDayIds);
+      updatedSet.add(event.dayId); // Set.add handles duplicates automatically
+      emit(state.copyWith(completedDayIds: updatedSet));
     });
 
     on<ResetPlanProgress>((event, emit) {
@@ -33,8 +31,8 @@ class PlanBloc extends HydratedBloc<PlanEvent, PlanState> {
         }
       }
 
-      // 2. Filter the current list to exclude those IDs
-      final updatedCompletedIds = state.completedDayIds.where((id) => !planDayIds.contains(id)).toList();
+      // 2. Filter the current set to exclude those IDs
+      final updatedCompletedIds = state.completedDayIds.where((id) => !planDayIds.contains(id)).toSet();
 
       // 3. Emit new state (Progress cleared, but plan remains Active)
       emit(state.copyWith(completedDayIds: updatedCompletedIds));

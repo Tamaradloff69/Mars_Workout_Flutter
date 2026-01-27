@@ -12,8 +12,9 @@ class TrainingPlan extends Equatable {
 
   const TrainingPlan({required this.id, required this.title, required this.description, required this.difficulty, required this.weeks, this.workoutType = WorkoutType.other});
 
-  // Calculate total progress based on completed workout IDs
-  double calculateProgress(List<String> completedWorkoutIds) {
+  /// Calculates progress based on completed workout IDs.
+  /// Uses Set for O(1) lookup performance instead of List's O(n).
+  double calculateProgress(Set<String> completedWorkoutIds) {
     int total = 0;
     int completed = 0;
     for (var week in weeks) {

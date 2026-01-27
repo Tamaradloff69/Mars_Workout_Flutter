@@ -1,31 +1,8 @@
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/data/builders/workout_builder.dart';
+import 'package:mars_workout_app/data/config/training_zones.dart';
 import 'package:mars_workout_app/data/models/training_plan.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
-
-// ==============================================================================
-// ZONE / PACING DESCRIPTIONS (Rowing Specific)
-// ==============================================================================
-class RowPace {
-  static const String steady =
-      "Steady State (UT2): 18-20 SPM.\n"
-      "Moderate effort. You should be able to hold a conversation. Focus on technique and rhythm.";
-
-  static const String intermediateSteady =
-      "Steady Distance: 20-24 SPM.\n"
-      "Solid aerobic work. consistent split.";
-
-  static const String hardDistance =
-      "Hard Distance (UT1/AT): Unrestricted Rate.\n"
-      "Faster than steady state. This is a time-trial effort (approx 80-90% max).";
-
-  static const String speedInterval =
-      "Speed Interval (TR): High Intensity.\n"
-      "Row faster than your 2k race pace. Maximum sustainable power.";
-
-  static const String enduranceInterval =
-      "Endurance Interval (AT): 2k Pace.\n"
-      "Hold your target 2k race pace. These are mentally tough.";
-}
 
 // ==============================================================================
 // 1. INSIDE INDOOR: INTERMEDIATE 2KM PLAN (100% Accurate to PDF)
@@ -132,54 +109,27 @@ TrainingPlan insideIndoorIntermediatePlan() {
 // --- INTERMEDIATE HELPERS ---
 
 Workout _iiPyramid(int totalMins, List<int> minutes, List<int> rates) {
-  List<WorkoutStage> stages = [const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10))];
-
-  for (int i = 0; i < minutes.length; i++) {
-    stages.add(
-      WorkoutStage(
-        name: '${minutes[i]} min @ ${rates[i]} spm',
-        duration: Duration(minutes: minutes[i]),
-        description: 'Hold strict rate ${rates[i]}. Focus on power per stroke.',
-      ),
-    );
-  }
-
-  stages.add(const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)));
-
-  return Workout(title: '$totalMins min Rate Pyramid', description: 'Control your stroke rate. Build intensity as rate goes up.', stages: stages);
+  return WorkoutBuilder.buildPyramid(
+    title: '$totalMins min Rate Pyramid',
+    durations: minutes,
+    intensities: rates,
+    stageNameBuilder: (duration, intensity) => '$duration min @ $intensity spm',
+    descriptionBuilder: (intensity) =>
+        'Hold strict rate $intensity. Focus on power per stroke.',
+    workoutDescription: 'Control your stroke rate. Build intensity as rate goes up.',
+  );
 }
 
 Workout _iiSetIntervals(int sets, int reps, int workMin, int restMin) {
-  List<WorkoutStage> stages = [const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10))];
-
-  for (int s = 1; s <= sets; s++) {
-    for (int r = 1; r <= reps; r++) {
-      stages.add(
-        WorkoutStage(
-          name: 'Sprint ($r/$reps)',
-          duration: Duration(minutes: workMin),
-          description: 'High Intensity! Fast rating.',
-        ),
-      );
-      if (r < reps) {
-        stages.add(
-          WorkoutStage(
-            name: 'Rest',
-            duration: Duration(minutes: restMin),
-            description: 'Paddle light.',
-          ),
-        );
-      }
-    }
-    // Rest between sets (3 mins usually per plan)
-    if (s < sets) {
-      stages.add(const WorkoutStage(name: 'Set Rest', duration: Duration(minutes: 3), description: 'Long recovery paddle.'));
-    }
-  }
-
-  stages.add(const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)));
-
-  return Workout(title: '$sets Sets of ($reps x ${workMin}min)', description: 'High intensity sprints. 1 min rest between reps, 3 min between sets.', stages: stages);
+  return WorkoutBuilder.buildSetIntervals(
+    title: '$sets Sets of ($reps x ${workMin}min)',
+    sets: sets,
+    repsPerSet: reps,
+    workMinutes: workMin,
+    restMinutes: restMin,
+    workDescription: 'High Intensity! Fast rating.',
+    setRestDescription: 'Long recovery paddle.',
+  );
 }
 
 Workout _iiVariableSteps(List<int> minutes, List<int> rates, String title) {
@@ -269,64 +219,34 @@ TrainingPlan insideIndoorBeginnerPlan() {
 // --- INSIDE INDOOR / BRITISH ROWING BEGINNER HELPERS ---
 
 Workout _iiIntervals(int workMin, int restMin, int reps, String intensity) {
-  return Workout(
+  return WorkoutBuilder.buildTimeIntervals(
     title: '${workMin}min Intervals ($reps reps)',
-    description: '$intensity. Focus on technique.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Pick drill & easy rowing.'),
-      for (int i = 0; i < reps; i++) ...[
-        WorkoutStage(
-          name: 'Row',
-          duration: Duration(minutes: workMin),
-          description: '$intensity. Maintain consistent stroke rate (18-24).',
-        ),
-        WorkoutStage(
-          name: 'Rest',
-          duration: Duration(minutes: restMin),
-          description: 'Light paddling or complete rest.',
-        ),
-      ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)),
-    ],
+    workMinutes: workMin,
+    restMinutes: restMin,
+    repetitions: reps,
+    workDescription: '$intensity. Maintain consistent stroke rate (18-24).',
+    workoutDescription: '$intensity. Focus on technique.',
+    warmupDescription: 'Pick drill & easy rowing.',
   );
 }
 
 Workout _iiDistanceIntervals(int meters, int restSec, int reps, String intensity) {
-  return Workout(
+  return WorkoutBuilder.buildDistanceIntervals(
     title: '${meters}m Intervals ($reps reps)',
-    description: '$intensity. Note your time for each piece.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5)),
-      for (int i = 0; i < reps; i++) ...[
-        WorkoutStage(
-          name: '$meters meters',
-          duration: Duration(minutes: (meters ~/ 200)),
-          description: '$intensity. Estimated time.',
-        ),
-        WorkoutStage(
-          name: 'Rest',
-          duration: Duration(seconds: restSec),
-          description: 'Recover.',
-        ),
-      ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)),
-    ],
+    meters: meters,
+    restSeconds: restSec,
+    repetitions: reps,
+    intensity: intensity,
+    workoutDescription: '$intensity. Note your time for each piece.',
   );
 }
 
 Workout _iiSteady(int mins, String title) {
-  return Workout(
+  return WorkoutBuilder.buildSteadyWorkout(
     title: title,
-    description: 'Continuous rowing at a sustainable pace.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 3)),
-      WorkoutStage(
-        name: 'Steady Row',
-        duration: Duration(minutes: mins),
-        description: 'Focus on posture and rhythm. 18-22 SPM.',
-      ),
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 3)),
-    ],
+    steadyMinutes: mins,
+    steadyDescription: 'Focus on posture and rhythm. 18-22 SPM.',
+    workoutDescription: 'Continuous rowing at a sustainable pace.',
   );
 }
 
@@ -362,20 +282,9 @@ Workout _iiStrokeBursts(int reps) {
 }
 
 Workout _iiDistanceTest(int meters, String title) {
-  // Approximate duration placeholder for progress bar
-  int estMin = meters ~/ 200;
-  return Workout(
+  return WorkoutBuilder.buildDistanceTest(
+    meters: meters,
     title: title,
-    description: 'Complete the distance. Record your time.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: 'Thorough warm-up.'),
-      WorkoutStage(
-        name: '$meters meters',
-        duration: Duration(minutes: estMin),
-        description: 'Pace yourself. Aim for a consistent split.',
-      ),
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
-    ],
   );
 }
 
@@ -480,11 +389,7 @@ TrainingPlan thePetePlan() {
 // --- PETE PLAN WORKOUT GENERATORS ---
 
 Workout _ppRestDay() {
-  return const Workout(
-    title: 'Rest Day',
-    description: 'Recover. Hydrate. Sleep.',
-    stages: [WorkoutStage(name: 'Rest', duration: Duration(seconds: 1), description: 'Rest day complete.')],
-  );
+  return WorkoutBuilder.buildRestDay();
 }
 
 Workout _ppSteadyDistance() {
@@ -493,7 +398,7 @@ Workout _ppSteadyDistance() {
     description: 'Aerobic base building. Recommended: 10,000m or ~40-60 mins.',
     stages: [
       WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5)),
-      WorkoutStage(name: 'Steady Row (10km)', duration: Duration(minutes: 45), description: "${RowPace.steady}\nRate: 22-25 spm. Do not go too hard."),
+      WorkoutStage(name: 'Steady Row (10km)', duration: Duration(minutes: 45), description: "${RowingZones.steady}\nRate: 22-25 spm. Do not go too hard."),
       WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)),
     ],
   );
@@ -505,7 +410,7 @@ Workout _ppHardDistance() {
     description: 'A continuous hard piece. 5km, 6km, or 30mins.',
     stages: [
       WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      WorkoutStage(name: 'Hard 5k', duration: Duration(minutes: 20), description: "${RowPace.hardDistance}\nFaster than steady days. No rate limit."),
+      WorkoutStage(name: 'Hard 5k', duration: Duration(minutes: 20), description: "${RowingZones.hardDistance}\nFaster than steady days. No rate limit."),
       WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );
@@ -519,7 +424,7 @@ Workout _ppSpeed8x500() {
     description: 'Classic speed. Total: 4000m work.',
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      for (int i = 1; i <= 8; i++) ...[const WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowPace.speedInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 3, seconds: 30), description: 'Paddle light.')],
+      for (int i = 1; i <= 8; i++) ...[const WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowingZones.speedInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 3, seconds: 30), description: 'Paddle light.')],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );
@@ -532,22 +437,22 @@ Workout _ppSpeedPyramid() {
     stages: [
       WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
       // 250m (Rest 1:30)
-      WorkoutStage(name: '250m Sprint', duration: Duration(seconds: 50), description: RowPace.speedInterval),
+      WorkoutStage(name: '250m Sprint', duration: Duration(seconds: 50), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 1, seconds: 30)),
       // 500m (Rest 3:00)
-      WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowPace.speedInterval),
+      WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 3)),
       // 750m (Rest 4:30)
-      WorkoutStage(name: '750m Sprint', duration: Duration(minutes: 2, seconds: 40), description: RowPace.speedInterval),
+      WorkoutStage(name: '750m Sprint', duration: Duration(minutes: 2, seconds: 40), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 4, seconds: 30)),
       // 1000m (Rest 6:00) - The Peak
-      WorkoutStage(name: '1000m Sprint', duration: Duration(minutes: 3, seconds: 40), description: RowPace.speedInterval),
+      WorkoutStage(name: '1000m Sprint', duration: Duration(minutes: 3, seconds: 40), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 6)),
       // 750m (Rest 4:30)
-      WorkoutStage(name: '750m Sprint', duration: Duration(minutes: 2, seconds: 40), description: RowPace.speedInterval),
+      WorkoutStage(name: '750m Sprint', duration: Duration(minutes: 2, seconds: 40), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 4, seconds: 30)),
       // 500m (Rest 3:00)
-      WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowPace.speedInterval),
+      WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 3)),
       // 250m (Done)
       WorkoutStage(name: '250m Sprint', duration: Duration(seconds: 50), description: "Empty the tank!"),
@@ -562,7 +467,7 @@ Workout _ppSpeed4x1000() {
     description: 'Longer speed intervals. Total: 4000m work.',
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      for (int i = 1; i <= 4; i++) ...[const WorkoutStage(name: '1000m Fast', duration: Duration(minutes: 3, seconds: 45), description: RowPace.speedInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
+      for (int i = 1; i <= 4; i++) ...[const WorkoutStage(name: '1000m Fast', duration: Duration(minutes: 3, seconds: 45), description: RowingZones.speedInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );
@@ -576,7 +481,7 @@ Workout _ppEndurance5x1500() {
     description: 'Endurance. Total: 7500m work.',
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      for (int i = 1; i <= 5; i++) ...[const WorkoutStage(name: '1500m Pace', duration: Duration(minutes: 6), description: RowPace.enduranceInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
+      for (int i = 1; i <= 5; i++) ...[const WorkoutStage(name: '1500m Pace', duration: Duration(minutes: 6), description: RowingZones.enduranceInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );
@@ -588,7 +493,7 @@ Workout _ppEndurance4x2000() {
     description: 'The classic endurance grinder. Total: 8000m work.',
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      for (int i = 1; i <= 4; i++) ...[const WorkoutStage(name: '2000m Pace', duration: Duration(minutes: 8), description: RowPace.enduranceInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
+      for (int i = 1; i <= 4; i++) ...[const WorkoutStage(name: '2000m Pace', duration: Duration(minutes: 8), description: RowingZones.enduranceInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );

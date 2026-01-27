@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:mars_workout_app/data/models/workout_session.dart';
 
@@ -33,7 +34,7 @@ class WorkoutSessionBloc extends HydratedBloc<WorkoutSessionEvent, WorkoutSessio
       }
       return const WorkoutSessionState();
     } catch (e) {
-      print('Error loading workout session: $e');
+      debugPrint('Error loading workout session: $e');
       return const WorkoutSessionState();
     }
   }
@@ -46,7 +47,7 @@ class WorkoutSessionBloc extends HydratedBloc<WorkoutSessionEvent, WorkoutSessio
       }
       return {'session': state.session!.toJson()};
     } catch (e) {
-      print('Error saving workout session: $e');
+      debugPrint('Error saving workout session: $e');
       return null;
     }
   }

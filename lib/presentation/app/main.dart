@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:mars_workout_app/core/services/audio_service.dart';
 import 'package:mars_workout_app/core/theme/app_theme.dart';
+import 'package:mars_workout_app/logic/bloc/history/history_bloc.dart';
 import 'package:mars_workout_app/presentation/screens/home_screen/home_page.dart';
 import 'package:mars_workout_app/presentation/widgets/resume_workout_dialog.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +19,6 @@ void main() async {
   ]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  // 2. MAKE SYSTEM BARS TRANSPARENT
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.dark, systemNavigationBarColor: Colors.transparent, systemNavigationBarIconBrightness: Brightness.dark));
   HydratedBloc.storage = await HydratedStorage.build(storageDirectory: await getApplicationDocumentsDirectory());
   await SoundService().init();
@@ -34,6 +34,7 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => PlanBloc()),
         BlocProvider(create: (_) => WorkoutSessionBloc()),
+        BlocProvider(create: (_) => HistoryBloc()),
       ],
       child: MaterialApp(
         title: 'Workout Planner',
@@ -61,17 +62,38 @@ class _HomePageWithResumeCheckState extends State<HomePageWithResumeCheck> {
     super.initState();
     // Check for saved workout session after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncHistoryWithPlanProgress();
       _checkForSavedWorkout();
     });
   }
 
+  void _syncHistoryWithPlanProgress() {
+    final completedIds = context.read<PlanBloc>().state.completedDayIds;
+    if (completedIds.isNotEmpty) {
+      context.read<HistoryBloc>().add(SyncCompletedWorkouts(completedIds));
+    }
+  }
+
   void _checkForSavedWorkout() {
-    final sessionState = context.read<WorkoutSessionBloc>().state;
+    final sessionBloc = context.read<WorkoutSessionBloc>();
+    final sessionState = sessionBloc.state;
+
     if (sessionState.hasSession && sessionState.session != null) {
+      final session = sessionState.session!;
+
+      // LOGIC FIX: If the session says it's finished, or it's old,
+      // kill it immediately and don't show the dialog.
+      if (session.isWorkoutFinished() || !session.isValid()) {
+        sessionBloc.add(const ClearWorkoutSession());
+        debugPrint("🧹 Startup Cleanup: Removed a finished/invalid session.");
+        return;
+      }
+
+      // Only if it's genuinely "In Progress" do we show the dialog
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => ResumeWorkoutDialog(session: sessionState.session!),
+        builder: (context) => ResumeWorkoutDialog(session: session),
       );
     }
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/data/models/workout_helper.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_bloc.dart';
 import 'package:mars_workout_app/presentation/screens/workout/workout_preview/workout_preview_screen.dart';
@@ -93,10 +94,15 @@ class WorkoutSelectionScreen extends StatelessWidget {
   }
 
   int _calculateTotalDuration(Workout workout) {
+    // Use the helper to get the real stage list that will be used during the workout
+    final stagesWithCountdown = WorkoutHelper.addCountdownStages(workout.stages);
+
     int totalSeconds = 0;
-    for (var stage in workout.stages) {
+    for (var stage in stagesWithCountdown) {
       totalSeconds += stage.duration.inSeconds;
     }
+
+    // Round to the nearest minute for display
     return (totalSeconds / 60).round();
   }
 }

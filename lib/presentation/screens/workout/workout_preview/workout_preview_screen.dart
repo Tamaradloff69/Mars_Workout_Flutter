@@ -13,61 +13,58 @@ class WorkoutPreviewScreen extends StatelessWidget {
   final Workout workout;
   final String planDayId;
   final WorkoutType workoutType;
+  final bool isPlanActive;
 
-  const WorkoutPreviewScreen({super.key, required this.workout, required this.planDayId, required this.workoutType});
+  const WorkoutPreviewScreen({super.key, required this.workout, required this.planDayId, required this.workoutType, this.isPlanActive = true});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final totalDuration = workout.stages.fold(Duration.zero, (prev, element) => prev + element.duration);
 
+    final realStages = WorkoutHelper.addCountdownStages(workout.stages);
+    final totalDuration = realStages.fold(Duration.zero, (prev, element) => prev + element.duration);
     return Scaffold(
       appBar: AppBar(title: const Text("Workout Overview")),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            height: 56,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                // Add countdown stages to the workout
-                final stagesWithCountdown = WorkoutHelper.addCountdownStages(workout.stages);
-                final workoutWithCountdown = Workout(
-                  title: workout.title,
-                  description: workout.description,
-                  stages: stagesWithCountdown,
-                );
-                
-                // Navigate to the actual Timer/Video screen
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MultiBlocProvider(
-                      providers: [
-                        BlocProvider.value(value: context.read<PlanBloc>()),
-                        BlocProvider.value(value: context.read<WorkoutSessionBloc>()),
-                        BlocProvider<TimerBloc>(
-                          create: (_) => TimerBloc(stagesWithCountdown)..add(StartTimer()),
+      bottomNavigationBar: isPlanActive
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SizedBox(
+                  height: 56,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Add countdown stages to the workout
+                      final stagesWithCountdown = WorkoutHelper.addCountdownStages(workout.stages);
+                      final workoutWithCountdown = Workout(title: workout.title, description: workout.description, stages: stagesWithCountdown);
+
+                      // Navigate to the actual Timer/Video screen
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MultiBlocProvider(
+                            providers: [
+                              BlocProvider.value(value: context.read<PlanBloc>()),
+                              BlocProvider.value(value: context.read<WorkoutSessionBloc>()),
+                              BlocProvider<TimerBloc>(create: (_) => TimerBloc(stagesWithCountdown)..add(StartTimer())),
+                              BlocProvider<WorkoutVideoCubit>(create: (_) => WorkoutVideoCubit()),
+                            ],
+                            child: WorkoutPage(workout: workoutWithCountdown, planDayId: planDayId, workoutType: workoutType),
+                          ),
                         ),
-                        BlocProvider<WorkoutVideoCubit>(create: (_) => WorkoutVideoCubit()),
-                      ],
-                      child: WorkoutPage(workout: workoutWithCountdown, planDayId: planDayId, workoutType: workoutType),
-                    ),
+                      );
+                    },
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: const Text("START WORKOUT"),
                   ),
-                );
-              },
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text("START WORKOUT"),
-            ),
-          ),
-        ),
-      ),
+                ),
+              ),
+            )
+          : const SafeArea(child: Text("Please start this plan to begin the workout.", textAlign: TextAlign.center)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- HEADER ---
             Text(
               workout.title,
               style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.primaryColor),
@@ -92,7 +89,8 @@ class WorkoutPreviewScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             ListView.separated(
-              physics: const NeverScrollableScrollPhysics(), // Scroll with whole page
+              physics: const NeverScrollableScrollPhysics(),
+              // Scroll with whole page
               shrinkWrap: true,
               itemCount: workout.stages.length,
               separatorBuilder: (context, index) => const Divider(height: 1),

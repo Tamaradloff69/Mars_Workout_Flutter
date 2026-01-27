@@ -48,8 +48,8 @@ class PlanDetailScreen extends StatelessWidget {
           builder: (context, state) {
             // Check if THIS plan is the active one for its type
             final isActive = state.isPlanActive(plan.id, plan.workoutType);
-            // Cache completedDayIds as Set for faster lookups
-            final completedDayIdsSet = Set<String>.from(state.completedDayIds);
+            // completedDayIds is already a Set for O(1) lookups
+            final completedDayIdsSet = state.completedDayIds;
 
             return Column(
               children: [
@@ -171,19 +171,8 @@ class PlanDetailScreen extends StatelessWidget {
                                       style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, decoration: isDayComplete ? TextDecoration.lineThrough : null, color: isDayComplete ? Colors.grey : null),
                                     ),
                                     onTap: () {
-                                      if (!isActive) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            persist: false,
-                                            content: const Text("Start this plan to begin workouts!"),
-                                            action: SnackBarAction(label: "START", onPressed: () => context.read<PlanBloc>().add(StartPlan(plan.id, plan.workoutType))),
-                                          ),
-                                        );
-                                        return;
-                                      }
-
                                       // 2. Navigate if Active
-                                      if (day.title.contains("Choice")) {
+                                      if (day.title.contains("Choice") && isActive) {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
@@ -199,7 +188,7 @@ class PlanDetailScreen extends StatelessWidget {
                                           MaterialPageRoute(
                                             builder: (_) => BlocProvider.value(
                                               value: BlocProvider.of<PlanBloc>(context),
-                                              child: WorkoutPreviewScreen(workout: day.workout, planDayId: day.id, workoutType: plan.workoutType),
+                                              child: WorkoutPreviewScreen(workout: day.workout, planDayId: day.id, workoutType: plan.workoutType, isPlanActive: isActive),
                                             ),
                                           ),
                                         );

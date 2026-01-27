@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/presentation/screens/home_screen/history/history_screen.dart';
 import 'package:mars_workout_app/presentation/screens/home_screen/plan_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -8,7 +9,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: WorkoutType.values.length - 1,
+      length: WorkoutType.values.length,
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Mars Workout"),
@@ -18,6 +19,7 @@ class HomeScreen extends StatelessWidget {
               Tab(icon: Icon(Icons.directions_bike), text: "Cycle"),
               Tab(icon: Icon(Icons.rowing), text: "Row"),
               Tab(icon: Icon(Icons.directions_run), text: "Elliptical"),
+              Tab(icon: Icon(Icons.timer_outlined), text: "History"),
             ],
           ),
         ),
@@ -27,6 +29,7 @@ class HomeScreen extends StatelessWidget {
               PlanListScreen(workoutType: WorkoutType.cycling),
               PlanListScreen(workoutType: WorkoutType.rowing),
               PlanListScreen(workoutType: WorkoutType.elliptical),
+              HistoryScreen(),
             ],
           ),
         ),

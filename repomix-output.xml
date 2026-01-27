@@ -40,6 +40,8 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+.claude/
+  settings.local.json
 android/
   app/
     src/
@@ -176,14 +178,21 @@ lib/
     constants/
       enums/
         workout_type.dart
+      workout_constants.dart
     services/
       audio_service.dart
+      workout_completion_service.dart
     theme/
       app_theme.dart
   data/
+    builders/
+      workout_builder.dart
+    config/
+      training_zones.dart
     models/
       training_plan.dart
       workout_helper.dart
+      workout_history_item.dart
       workout_model.dart
       workout_session.dart
     repositories/
@@ -198,6 +207,10 @@ lib/
         workout_repository.dart
   logic/
     bloc/
+      history/
+        history_bloc.dart
+        history_event.dart
+        history_state.dart
       plan/
         plan_bloc.dart
         plan_event.dart
@@ -219,6 +232,10 @@ lib/
       home_screen/
         details/
           plan_details.dart
+        history/
+          widgets/
+            history_stats_header.dart
+          history_screen.dart
         home_page.dart
         home_screen.dart
         plan_list_screen.dart
@@ -343,6 +360,1100 @@ RESUME_WORKOUT_FEATURE.md
 <files>
 This section contains the contents of the repository's files.
 
+<file path=".claude/settings.local.json">
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter build:*)"
+    ]
+  }
+}
+</file>
+
+<file path="lib/core/constants/workout_constants.dart">
+/// Centralized workout-related constants to eliminate magic numbers and strings.
+library;
+
+class WorkoutConstants {
+  // ==========================================================================
+  // VIDEO PLAYBACK
+  // ==========================================================================
+
+  /// Workouts longer than this threshold will offer YouTube video playback.
+  /// Workouts shorter than this use GIF animations.
+  static const Duration youtubeThreshold = Duration(minutes: 10);
+
+  // ==========================================================================
+  // SESSION SAVING
+  // ==========================================================================
+
+  /// Interval in seconds for auto-saving workout session progress.
+  static const int autoSaveIntervalSeconds = 5;
+
+  // ==========================================================================
+  // DEFAULT WORKOUT DURATIONS
+  // ==========================================================================
+
+  /// Default warm-up duration for most workouts.
+  static const int defaultWarmupMinutes = 5;
+
+  /// Default cool-down duration for most workouts.
+  static const int defaultCooldownMinutes = 5;
+
+  /// Extended warm-up for advanced workouts.
+  static const int extendedWarmupMinutes = 10;
+
+  /// Extended cool-down for advanced workouts.
+  static const int extendedCooldownMinutes = 10;
+
+  // ==========================================================================
+  // STAGE NAMES
+  // ==========================================================================
+
+  static const String stageNameWarmup = 'Warm-up';
+  static const String stageNameCooldown = 'Cool-down';
+  static const String stageNameGetReady = 'Get Ready';
+  static const String stageNameRest = 'Rest';
+  static const String stageNameWork = 'Work';
+  static const String stageNameRecovery = 'Recovery';
+  static const String stageNameSetRest = 'Set Rest';
+
+  // ==========================================================================
+  // ROWING SPECIFIC
+  // ==========================================================================
+
+  /// Estimated meters per minute for rowing (used for time calculations).
+  static const int rowingMetersPerMinute = 200;
+
+  /// Standard stroke rate ranges.
+  static const int rowingSpmLow = 18;
+  static const int rowingSpmMedium = 22;
+  static const int rowingSpmHigh = 28;
+
+  // ==========================================================================
+  // CYCLING SPECIFIC
+  // ==========================================================================
+
+  /// Standard cadence ranges.
+  static const int cyclingRpmLow = 60;
+  static const int cyclingRpmMedium = 80;
+  static const int cyclingRpmHigh = 100;
+
+  // ==========================================================================
+  // ELLIPTICAL SPECIFIC
+  // ==========================================================================
+
+  /// Standard resistance scale (out of 10).
+  static const int ellipticalResistanceMax = 10;
+  static const int ellipticalResistanceLow = 3;
+  static const int ellipticalResistanceMedium = 6;
+  static const int ellipticalResistanceHigh = 8;
+
+  // ==========================================================================
+  // COMMON WORKOUT DESCRIPTIONS
+  // ==========================================================================
+
+  static const String descriptionRestDay =
+      'Rest is vital. Mark this day as complete to stay on track.';
+
+  static const String descriptionRecovery =
+      'Light recovery. Focus on breathing and form.';
+
+  static const String descriptionWarmup =
+      'Gradually increase intensity to prepare your body.';
+
+  static const String descriptionCooldown =
+      'Gradually decrease intensity to help recovery.';
+}
+</file>
+
+<file path="lib/core/services/workout_completion_service.dart">
+import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/data/models/training_plan.dart';
+
+/// Service to handle workout completion detection logic.
+/// Determines if a workout completion results in week or plan completion.
+class WorkoutCompletionService {
+  /// Result of checking workout completion status.
+  CompletionStatus checkCompletion({
+    required String completedDayId,
+    required Set<String> completedDayIds,
+    required List<TrainingPlan> allPlans,
+    required WorkoutType workoutType,
+    required String? activePlanId,
+  }) {
+    if (activePlanId == null) {
+      return CompletionStatus(
+        isWeekComplete: false,
+        isPlanComplete: false,
+      );
+    }
+
+    try {
+      final currentPlan = allPlans.firstWhere((p) => p.id == activePlanId);
+
+      // Check if entire plan is complete
+      final isPlanComplete = currentPlan.weeks.every(
+        (week) => week.days.every((day) => completedDayIds.contains(day.id)),
+      );
+
+      bool isWeekComplete = false;
+
+      // If plan is not complete, check if the current week is complete
+      if (!isPlanComplete) {
+        for (var week in currentPlan.weeks) {
+          if (week.days.any((d) => d.id == completedDayId)) {
+            isWeekComplete = week.days.every(
+              (d) => completedDayIds.contains(d.id),
+            );
+            break;
+          }
+        }
+      }
+
+      return CompletionStatus(
+        isWeekComplete: isWeekComplete,
+        isPlanComplete: isPlanComplete,
+      );
+    } catch (e) {
+      // Plan not found or error occurred
+      return CompletionStatus(
+        isWeekComplete: false,
+        isPlanComplete: false,
+        error: 'Plan lookup error: $e',
+      );
+    }
+  }
+}
+
+/// Represents the completion status after a workout is finished.
+class CompletionStatus {
+  final bool isWeekComplete;
+  final bool isPlanComplete;
+  final String? error;
+
+  CompletionStatus({
+    required this.isWeekComplete,
+    required this.isPlanComplete,
+    this.error,
+  });
+
+  /// Returns true if this was just a workout completion (not week or plan).
+  bool get isWorkoutOnly => !isWeekComplete && !isPlanComplete;
+}
+</file>
+
+<file path="lib/data/builders/workout_builder.dart">
+import 'package:mars_workout_app/data/models/workout_model.dart';
+
+/// Shared workout builder to eliminate duplication across repositories.
+/// Provides common workout patterns used by rowing, cycling, and elliptical plans.
+class WorkoutBuilder {
+  /// Creates a time-based interval workout with repeated work/rest cycles.
+  ///
+  /// Example: 5 reps of 1 min work / 1 min rest
+  static Workout buildTimeIntervals({
+    required String title,
+    required int workMinutes,
+    required int restMinutes,
+    required int repetitions,
+    required String workDescription,
+    String? workoutDescription,
+    String restDescription = 'Light recovery.',
+    int warmupMinutes = 5,
+    int cooldownMinutes = 5,
+    String warmupDescription = '',
+    String cooldownDescription = '',
+  }) {
+    final stages = <WorkoutStage>[
+      WorkoutStage(
+        name: 'Warm-up',
+        duration: Duration(minutes: warmupMinutes),
+        description: warmupDescription,
+      ),
+      for (int i = 0; i < repetitions; i++) ...[
+        WorkoutStage(
+          name: 'Work',
+          duration: Duration(minutes: workMinutes),
+          description: workDescription,
+        ),
+        WorkoutStage(
+          name: 'Rest',
+          duration: Duration(minutes: restMinutes),
+          description: restDescription,
+        ),
+      ],
+      WorkoutStage(
+        name: 'Cool-down',
+        duration: Duration(minutes: cooldownMinutes),
+        description: cooldownDescription,
+      ),
+    ];
+
+    return Workout(
+      title: title,
+      description: workoutDescription ?? '$repetitions x $workMinutes min intervals',
+      stages: stages,
+    );
+  }
+
+  /// Creates a distance-based interval workout (useful for rowing).
+  ///
+  /// Example: 4 x 500m with 2 min rest
+  static Workout buildDistanceIntervals({
+    required String title,
+    required int meters,
+    required int restSeconds,
+    required int repetitions,
+    required String intensity,
+    String? workoutDescription,
+    int warmupMinutes = 5,
+    int cooldownMinutes = 5,
+  }) {
+    final estimatedMinutesPerRep = meters ~/ 200;
+
+    final stages = <WorkoutStage>[
+      WorkoutStage(
+        name: 'Warm-up',
+        duration: Duration(minutes: warmupMinutes),
+      ),
+      for (int i = 0; i < repetitions; i++) ...[
+        WorkoutStage(
+          name: '$meters meters',
+          duration: Duration(minutes: estimatedMinutesPerRep),
+          description: '$intensity. Estimated time.',
+        ),
+        WorkoutStage(
+          name: 'Rest',
+          duration: Duration(seconds: restSeconds),
+          description: 'Recover.',
+        ),
+      ],
+      WorkoutStage(
+        name: 'Cool-down',
+        duration: Duration(minutes: cooldownMinutes),
+      ),
+    ];
+
+    return Workout(
+      title: title,
+      description: workoutDescription ?? '$repetitions x $meters m intervals. $intensity.',
+      stages: stages,
+    );
+  }
+
+  /// Creates a steady-state continuous workout.
+  ///
+  /// Example: 20 min steady row at Zone 2
+  static Workout buildSteadyWorkout({
+    required String title,
+    required int steadyMinutes,
+    required String steadyDescription,
+    String? workoutDescription,
+    int warmupMinutes = 3,
+    int cooldownMinutes = 3,
+    String warmupDescription = '',
+    String cooldownDescription = '',
+  }) {
+    final stages = <WorkoutStage>[
+      WorkoutStage(
+        name: 'Warm-up',
+        duration: Duration(minutes: warmupMinutes),
+        description: warmupDescription,
+      ),
+      WorkoutStage(
+        name: 'Steady State',
+        duration: Duration(minutes: steadyMinutes),
+        description: steadyDescription,
+      ),
+      WorkoutStage(
+        name: 'Cool-down',
+        duration: Duration(minutes: cooldownMinutes),
+        description: cooldownDescription,
+      ),
+    ];
+
+    return Workout(
+      title: title,
+      description: workoutDescription ?? 'Continuous workout at a sustainable pace.',
+      stages: stages,
+    );
+  }
+
+  /// Creates a pyramid workout with varying durations and intensities.
+  ///
+  /// Example: [2, 2, 2, 2, 2] minutes at [20, 22, 24, 22, 20] rates
+  static Workout buildPyramid({
+    required String title,
+    required List<int> durations,
+    required List<int> intensities,
+    required String Function(int duration, int intensity) stageNameBuilder,
+    required String Function(int intensity) descriptionBuilder,
+    String? workoutDescription,
+    int warmupMinutes = 10,
+    int cooldownMinutes = 5,
+  }) {
+    assert(durations.length == intensities.length,
+        'Durations and intensities must have the same length');
+
+    final stages = <WorkoutStage>[
+      WorkoutStage(
+        name: 'Warm-up',
+        duration: Duration(minutes: warmupMinutes),
+      ),
+      for (int i = 0; i < durations.length; i++)
+        WorkoutStage(
+          name: stageNameBuilder(durations[i], intensities[i]),
+          duration: Duration(minutes: durations[i]),
+          description: descriptionBuilder(intensities[i]),
+        ),
+      WorkoutStage(
+        name: 'Cool-down',
+        duration: Duration(minutes: cooldownMinutes),
+      ),
+    ];
+
+    return Workout(
+      title: title,
+      description: workoutDescription ?? 'Varying intensity pyramid workout.',
+      stages: stages,
+    );
+  }
+
+  /// Creates a workout with multiple sets of intervals with rest between sets.
+  ///
+  /// Example: 2 sets of (3 x 1min hard / 1min rest) with 3min between sets
+  static Workout buildSetIntervals({
+    required String title,
+    required int sets,
+    required int repsPerSet,
+    required int workMinutes,
+    required int restMinutes,
+    required String workDescription,
+    String? workoutDescription,
+    int setRestMinutes = 3,
+    String setRestDescription = 'Long recovery.',
+    int warmupMinutes = 10,
+    int cooldownMinutes = 10,
+  }) {
+    final stages = <WorkoutStage>[
+      WorkoutStage(
+        name: 'Warm-up',
+        duration: Duration(minutes: warmupMinutes),
+      ),
+    ];
+
+    for (int s = 1; s <= sets; s++) {
+      for (int r = 1; r <= repsPerSet; r++) {
+        stages.add(
+          WorkoutStage(
+            name: 'Work ($r/$repsPerSet)',
+            duration: Duration(minutes: workMinutes),
+            description: workDescription,
+          ),
+        );
+        if (r < repsPerSet) {
+          stages.add(
+            WorkoutStage(
+              name: 'Rest',
+              duration: Duration(minutes: restMinutes),
+              description: 'Recover.',
+            ),
+          );
+        }
+      }
+      if (s < sets) {
+        stages.add(
+          WorkoutStage(
+            name: 'Set Rest',
+            duration: Duration(minutes: setRestMinutes),
+            description: setRestDescription,
+          ),
+        );
+      }
+    }
+
+    stages.add(
+      WorkoutStage(
+        name: 'Cool-down',
+        duration: Duration(minutes: cooldownMinutes),
+      ),
+    );
+
+    return Workout(
+      title: title,
+      description: workoutDescription ??
+          '$sets sets of ($repsPerSet x ${workMinutes}min). ${setRestMinutes}min rest between sets.',
+      stages: stages,
+    );
+  }
+
+  /// Creates a variable workout with different segments.
+  ///
+  /// Example: Progressive intensity builds or step workouts
+  static Workout buildVariableWorkout({
+    required String title,
+    required String description,
+    required List<WorkoutStage> mainStages,
+    int warmupMinutes = 10,
+    int cooldownMinutes = 5,
+    String warmupDescription = '',
+    String cooldownDescription = '',
+  }) {
+    final stages = <WorkoutStage>[
+      WorkoutStage(
+        name: 'Warm-up',
+        duration: Duration(minutes: warmupMinutes),
+        description: warmupDescription,
+      ),
+      ...mainStages,
+      WorkoutStage(
+        name: 'Cool-down',
+        duration: Duration(minutes: cooldownMinutes),
+        description: cooldownDescription,
+      ),
+    ];
+
+    return Workout(
+      title: title,
+      description: description,
+      stages: stages,
+    );
+  }
+
+  /// Creates a distance test workout.
+  ///
+  /// Example: 2000m time trial
+  static Workout buildDistanceTest({
+    required int meters,
+    required String title,
+    String? description,
+    int warmupMinutes = 10,
+    int cooldownMinutes = 10,
+  }) {
+    final estimatedMinutes = meters ~/ 200;
+
+    return Workout(
+      title: title,
+      description: description ?? 'Complete the distance. Record your time.',
+      stages: [
+        WorkoutStage(
+          name: 'Warm-up',
+          duration: Duration(minutes: warmupMinutes),
+          description: 'Thorough warm-up.',
+        ),
+        WorkoutStage(
+          name: '$meters meters',
+          duration: Duration(minutes: estimatedMinutes),
+          description: 'Pace yourself. Aim for a consistent split.',
+        ),
+        WorkoutStage(
+          name: 'Cool-down',
+          duration: Duration(minutes: cooldownMinutes),
+        ),
+      ],
+    );
+  }
+
+  /// Creates a rest day workout.
+  static Workout buildRestDay({String title = 'Rest Day'}) {
+    return Workout(
+      title: title,
+      description: 'Rest is vital. Mark this day as complete to stay on track.',
+      stages: const [
+        WorkoutStage(
+          name: 'Resting...',
+          duration: Duration(seconds: 1),
+          description: 'Relax. Good sleep is the best recovery tool.',
+        ),
+      ],
+    );
+  }
+
+  /// Creates interval workout with custom work/rest durations in seconds.
+  ///
+  /// Useful for Tabata, HIIT, etc.
+  static Workout buildSecondIntervals({
+    required String title,
+    required String description,
+    required int workSeconds,
+    required int restSeconds,
+    required int repetitions,
+    required String workDescription,
+    String restDescription = 'Recover.',
+    int warmupMinutes = 5,
+    int cooldownMinutes = 5,
+    String warmupDescription = '',
+    String cooldownDescription = '',
+  }) {
+    final stages = <WorkoutStage>[
+      WorkoutStage(
+        name: 'Warm-up',
+        duration: Duration(minutes: warmupMinutes),
+        description: warmupDescription,
+      ),
+      for (int i = 1; i <= repetitions; i++) ...[
+        WorkoutStage(
+          name: 'Work ($i/$repetitions)',
+          duration: Duration(seconds: workSeconds),
+          description: workDescription,
+        ),
+        WorkoutStage(
+          name: 'Rest',
+          duration: Duration(seconds: restSeconds),
+          description: restDescription,
+        ),
+      ],
+      WorkoutStage(
+        name: 'Cool-down',
+        duration: Duration(minutes: cooldownMinutes),
+        description: cooldownDescription,
+      ),
+    ];
+
+    return Workout(
+      title: title,
+      description: description,
+      stages: stages,
+    );
+  }
+}
+</file>
+
+<file path="lib/data/config/training_zones.dart">
+/// Unified training zone descriptions for all workout types.
+/// This eliminates duplication between RowPace and ZoneDesc classes.
+library;
+
+// =============================================================================
+// ROWING ZONES
+// =============================================================================
+class RowingZones {
+  static const String steady =
+      "Steady State (UT2): 18-20 SPM.\n"
+      "Moderate effort. You should be able to hold a conversation. Focus on technique and rhythm.";
+
+  static const String intermediateSteady =
+      "Steady Distance: 20-24 SPM.\n"
+      "Solid aerobic work. Consistent split.";
+
+  static const String hardDistance =
+      "Hard Distance (UT1/AT): Unrestricted Rate.\n"
+      "Faster than steady state. This is a time-trial effort (approx 80-90% max).";
+
+  static const String speedInterval =
+      "Speed Interval (TR): High Intensity.\n"
+      "Row faster than your 2k race pace. Maximum sustainable power.";
+
+  static const String enduranceInterval =
+      "Endurance Interval (AT): 2k Pace.\n"
+      "Hold your target 2k race pace. These are mentally tough.";
+}
+
+// =============================================================================
+// CYCLING ZONES
+// =============================================================================
+class CyclingZones {
+  static const String z0 =
+      "Warm Up: Very light spinning.\n"
+      "Get the blood flowing and legs ready. Minimal effort, just turning the pedals.";
+
+  static const String z1 =
+      "Active Recovery: Can sing a song.\n"
+      "Very easy spinning with minimal resistance. Use this to flush out legs and recover.";
+
+  static const String z2 =
+      "Endurance: Can hold a full conversation.\n"
+      "'All day' pace. You are working but not struggling. This burns fat and builds your aerobic engine.";
+
+  static const String z3 =
+      "Tempo: Can speak in short sentences.\n"
+      "'Comfortably Hard.' You have to focus to keep this pace up. Breathing is deeper and rhythmic.";
+
+  static const String sweetSpot =
+      "Sweet Spot: Can speak a few words at a time.\n"
+      "The 'Goldilocks' zone. Hard enough to build big power, but sustainable for long blocks (10-20m).";
+
+  static const String z4 =
+      "Threshold: Can hardly speak.\n"
+      "Your 1-hour race pace. Legs start to burn significantly. Requires mental toughness to hold.";
+
+  static const String z5 =
+      "Max Effort: Cannot speak.\n"
+      "All-out effort. Sprints or steep hill attacks. You should be gasping for air.";
+}
+
+// =============================================================================
+// ELLIPTICAL ZONES (using RPE - Rate of Perceived Exertion)
+// =============================================================================
+class EllipticalZones {
+  static const String warmup =
+      "Warm-up: Very light effort.\n"
+      "Resistance 3/10. Get the blood flowing. Smooth, full circles.";
+
+  static const String recovery =
+      "Recovery: Minimal effort.\n"
+      "Easy pace. Let heart rate drop. Focus on breathing.";
+
+  static const String moderate =
+      "Moderate: RPE 5-6.\n"
+      "Conversational pace. Steady breathing. Can maintain for long periods.";
+
+  static const String hard =
+      "Hard: RPE 7-8.\n"
+      "Uncomfortable but sustainable. Labored breathing. Requires focus.";
+
+  static const String maxEffort =
+      "Max Effort: RPE 9-10.\n"
+      "All-out sprint. Cannot maintain conversation. Gasping for air.";
+
+  static String resistanceRange(int low, int high) =>
+      "Resistance $low-$high/10.";
+}
+
+// =============================================================================
+// UNIVERSAL INTENSITY LEVELS (for cross-sport compatibility)
+// =============================================================================
+class UniversalIntensity {
+  static const String low = "Low Intensity";
+  static const String medium = "Medium Intensity";
+  static const String high = "High Intensity";
+  static const String maximum = "Maximum Intensity";
+}
+</file>
+
+<file path="lib/data/models/workout_history_item.dart">
+// lib/data/models/workout_history_item.dart
+
+import 'package:equatable/equatable.dart';
+import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+
+class WorkoutHistoryItem extends Equatable {
+  final String id;
+  final String workoutTitle;
+  final WorkoutType type;
+  final DateTime completedAt;
+  final int totalMinutes;
+
+  const WorkoutHistoryItem({
+    required this.id,
+    required this.workoutTitle,
+    required this.type,
+    required this.completedAt,
+    required this.totalMinutes,
+  });
+
+  @override
+  List<Object?> get props => [id, workoutTitle, type, completedAt, totalMinutes];
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'workoutTitle': workoutTitle,
+    'type': type.toString(),
+    'completedAt': completedAt.toIso8601String(),
+    'totalMinutes': totalMinutes,
+  };
+
+  factory WorkoutHistoryItem.fromJson(Map<String, dynamic> json) {
+    return WorkoutHistoryItem(
+      id: json['id'],
+      workoutTitle: json['workoutTitle'],
+      type: WorkoutType.values.firstWhere((e) => e.toString() == json['type']),
+      completedAt: DateTime.parse(json['completedAt']),
+      totalMinutes: json['totalMinutes'],
+    );
+  }
+}
+</file>
+
+<file path="lib/logic/bloc/history/history_bloc.dart">
+// lib/logic/bloc/history/history_bloc.dart
+
+import 'package:flutter/cupertino.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
+import 'package:mars_workout_app/data/models/training_plan.dart';
+import 'package:mars_workout_app/data/models/workout_history_item.dart';
+import 'package:equatable/equatable.dart';
+import 'package:mars_workout_app/data/repositories/workouts/workout_repository.dart';
+
+part 'history_event.dart';
+
+part 'history_state.dart';
+
+class HistoryBloc extends HydratedBloc<HistoryEvent, HistoryState> {
+  HistoryBloc() : super(const HistoryState()) {
+    on<RemovePlanFromHistory>((event, emit) {
+      // Extract all IDs belonging to the plan being reset
+      final planDayIds = event.plan.weeks
+          .expand((week) => week.days)
+          .map((day) => day.id)
+          .toSet();
+
+      // Filter history to remove those specific IDs
+      final updatedHistory = state.history
+          .where((item) => !planDayIds.contains(item.id))
+          .toList();
+
+      emit(HistoryState(history: updatedHistory));
+    });
+    on<SyncCompletedWorkouts>((event, emit) {
+      final currentHistoryIds = state.history.map((item) => item.id).toSet();
+      final allPlans = WorkoutRepository().getAllPlans();
+      final List<WorkoutHistoryItem> newItems = [];
+
+      for (var dayId in event.completedDayIds) {
+        // Only process if this ID isn't already in our history list
+        if (!currentHistoryIds.contains(dayId)) {
+          try {
+            // Find the workout details from our repositories using the ID
+            // This logic assumes your IDs (e.g., 'disc_w1_d1') are searchable
+            for (var plan in allPlans) {
+              for (var week in plan.weeks) {
+                for (var day in week.days) {
+                  if (day.id == dayId) {
+                    newItems.add(
+                      WorkoutHistoryItem(
+                        id: day.id,
+                        // Using the dayId as the unique key prevents duplicates
+                        workoutTitle: day.title,
+                        type: plan.workoutType,
+                        completedAt: DateTime.now(),
+                        // Estimate for past items
+                        totalMinutes: day.workout.stages.fold(0, (sum, s) => sum + s.duration.inMinutes),
+                      ),
+                    );
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint("Could not find workout details for $dayId");
+          }
+        }
+      }
+
+      if (newItems.isNotEmpty) {
+        final updatedHistory = List<WorkoutHistoryItem>.from(state.history)..addAll(newItems);
+        // Sort by date if necessary, or keep chronological
+        emit(HistoryState(history: updatedHistory));
+      }
+    });
+    on<AddWorkoutToHistory>((event, emit) {
+      final updatedHistory = List<WorkoutHistoryItem>.from(state.history)..insert(0, event.item); // Most recent first
+      emit(HistoryState(history: updatedHistory));
+    });
+    on<DeleteHistoryItem>((event, emit) {
+      final updatedHistory = state.history.where((item) => item.id != event.id).toList();
+      emit(HistoryState(history: updatedHistory));
+    });
+    on<ClearHistory>((event, emit) => emit(const HistoryState()));
+  }
+
+  @override
+  HistoryState? fromJson(Map<String, dynamic> json) {
+    final list = json['history'] as List?;
+    if (list == null) return const HistoryState();
+    return HistoryState(history: list.map((item) => WorkoutHistoryItem.fromJson(item)).toList());
+  }
+
+  @override
+  Map<String, dynamic>? toJson(HistoryState state) {
+    return {'history': state.history.map((item) => item.toJson()).toList()};
+  }
+}
+</file>
+
+<file path="lib/logic/bloc/history/history_event.dart">
+// lib/logic/bloc/history/history_event.dart
+
+part of 'history_bloc.dart';
+
+abstract class HistoryEvent extends Equatable {
+  const HistoryEvent();
+
+  @override
+  List<Object?> get props => [];
+}
+class RemovePlanFromHistory extends HistoryEvent {
+  final TrainingPlan plan;
+  const RemovePlanFromHistory(this.plan);
+}
+/// Dispatched when a workout is finished to permanently log it.
+class AddWorkoutToHistory extends HistoryEvent {
+  final WorkoutHistoryItem item;
+
+  const AddWorkoutToHistory(this.item);
+
+  @override
+  List<Object?> get props => [item];
+}
+
+class SyncCompletedWorkouts extends HistoryEvent {
+  final Set<String> completedDayIds;
+
+  const SyncCompletedWorkouts(this.completedDayIds);
+
+  @override
+  List<Object?> get props => [completedDayIds];
+}
+class DeleteHistoryItem extends HistoryEvent {
+  final String id;
+
+  const DeleteHistoryItem(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+/// Dispatched if the user wants to reset their entire workout log.
+class ClearHistory extends HistoryEvent {
+  const ClearHistory();
+}
+</file>
+
+<file path="lib/logic/bloc/history/history_state.dart">
+// lib/logic/bloc/history/history_state.dart
+
+part of 'history_bloc.dart';
+
+class HistoryState extends Equatable {
+  /// The list of all completed workouts, ordered from newest to oldest.
+  final List<WorkoutHistoryItem> history;
+
+  const HistoryState({
+    this.history = const [],
+  });
+
+  @override
+  List<Object?> get props => [history];
+
+  // Helper to check if the user has any history at all
+  bool get isEmpty => history.isEmpty;
+
+  // Helper to calculate total lifetime workout minutes
+  int get totalLifetimeMinutes => history.fold(0, (sum, item) => sum + item.totalMinutes);
+}
+</file>
+
+<file path="lib/presentation/screens/home_screen/history/widgets/history_stats_header.dart">
+// lib/presentation/screens/home_screen/widgets/history_stats_header.dart
+
+import 'package:flutter/material.dart';
+import 'package:mars_workout_app/logic/bloc/history/history_bloc.dart';
+
+class HistoryStatsHeader extends StatelessWidget {
+  final HistoryState state;
+
+  const HistoryStatsHeader({super.key, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // Aggregate data using the helpers in HistoryState
+    final totalWorkouts = state.history.length;
+    final totalMinutes = state.totalLifetimeMinutes;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem(
+            context,
+            label: "Workouts",
+            value: totalWorkouts.toString(),
+            icon: Icons.fitness_center,
+          ),
+          Container(width: 1, height: 40, color: theme.dividerColor),
+          _buildStatItem(
+            context,
+            label: "Total Minutes",
+            value: totalMinutes.toString(),
+            icon: Icons.timer,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+      BuildContext context, {
+        required String label,
+        required String value,
+        required IconData icon,
+      }) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Icon(icon, color: theme.primaryColor, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.primaryColor,
+          ),
+        ),
+        Text(
+          label.toUpperCase(),
+          style: theme.textTheme.labelSmall?.copyWith(
+            letterSpacing: 1.1,
+            color: theme.disabledColor,
+          ),
+        ),
+      ],
+    );
+  }
+}
+</file>
+
+<file path="lib/presentation/screens/home_screen/history/history_screen.dart">
+// lib/presentation/screens/home_screen/history_screen.dart
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mars_workout_app/logic/bloc/history/history_bloc.dart';
+import 'package:intl/intl.dart';
+import 'package:mars_workout_app/presentation/screens/home_screen/history/widgets/history_stats_header.dart';
+
+class HistoryScreen extends StatelessWidget {
+  const HistoryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Workout History"),
+        actions: [
+          BlocBuilder<HistoryBloc, HistoryState>(
+            builder: (context, state) {
+              // Only show the clear button if there is history to clear
+              if (state.history.isEmpty) return const SizedBox.shrink();
+
+              return IconButton(
+                icon: const Icon(Icons.delete_sweep_rounded, color: Colors.red),
+                onPressed: () => _showClearConfirmation(context),
+                tooltip: 'Clear All History',
+              );
+            },
+          ),
+        ],
+      ),
+      body: BlocBuilder<HistoryBloc, HistoryState>(
+        builder: (context, state) {
+          if (state.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.history, size: 64, color: theme.disabledColor),
+                  const SizedBox(height: 16),
+                  Text("No workout history yet.", style: theme.textTheme.titleMedium),
+                ],
+              ),
+            );
+          }
+
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              HistoryStatsHeader(state: state), // New Stats Header
+              const SizedBox(height: 24),
+              Text(
+                "RECENT ACTIVITY",
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.disabledColor,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Move the previous ListView logic into this child list
+              ...state.history.map((item) => Dismissible(
+                key: Key(item.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                onDismissed: (direction) {
+                  context.read<HistoryBloc>().add(DeleteHistoryItem(item.id));
+
+                  // Optional: Show a snackbar to confirm
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("${item.workoutTitle} removed from history"),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: Card(
+                  margin: EdgeInsets.zero, // Card handles padding via the loop/separator
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
+                      child: Icon(Icons.fitness_center, color: theme.primaryColor),
+                    ),
+                    title: Text(item.workoutTitle, style: theme.textTheme.titleMedium),
+                    subtitle: Text(DateFormat('EEE, MMM d • h:mm a').format(item.completedAt)),
+                    trailing: Text(
+                      "${item.totalMinutes}m",
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              )),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showClearConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Clear History?"),
+        content: const Text("This will permanently delete all your recorded workouts. This cannot be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<HistoryBloc>().add(const ClearHistory());
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Workout history cleared")),
+              );
+            },
+            child: const Text("Clear All", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+</file>
+
 <file path="android/app/src/debug/AndroidManifest.xml">
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- The INTERNET permission is required for development. Specifically,
@@ -351,14 +1462,6 @@ This section contains the contents of the repository's files.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
 </manifest>
-</file>
-
-<file path="android/app/src/main/kotlin/com/example/mars_workout_app/MainActivity.kt">
-package com.example.mars_workout_app
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity : FlutterActivity()
 </file>
 
 <file path="android/app/src/main/res/drawable/launch_background.xml">
@@ -1052,24 +2155,73 @@ end
 
 <file path="ios/Podfile.lock">
 PODS:
+  - audioplayers_darwin (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - Flutter (1.0.0)
+  - flutter_inappwebview_ios (0.0.1):
+    - Flutter
+    - flutter_inappwebview_ios/Core (= 0.0.1)
+    - OrderedSet (~> 6.0.3)
+  - flutter_inappwebview_ios/Core (0.0.1):
+    - Flutter
+    - OrderedSet (~> 6.0.3)
+  - OrderedSet (6.0.3)
+  - package_info_plus (0.4.5):
+    - Flutter
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - sqflite_darwin (0.0.4):
+    - Flutter
+    - FlutterMacOS
+  - url_launcher_ios (0.0.1):
+    - Flutter
+  - wakelock_plus (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
+  - audioplayers_darwin (from `.symlinks/plugins/audioplayers_darwin/darwin`)
   - Flutter (from `Flutter`)
+  - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
+  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+  - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
+  - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
+
+SPEC REPOS:
+  trunk:
+    - OrderedSet
 
 EXTERNAL SOURCES:
+  audioplayers_darwin:
+    :path: ".symlinks/plugins/audioplayers_darwin/darwin"
   Flutter:
     :path: Flutter
+  flutter_inappwebview_ios:
+    :path: ".symlinks/plugins/flutter_inappwebview_ios/ios"
+  package_info_plus:
+    :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
+  sqflite_darwin:
+    :path: ".symlinks/plugins/sqflite_darwin/darwin"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
+  wakelock_plus:
+    :path: ".symlinks/plugins/wakelock_plus/ios"
 
 SPEC CHECKSUMS:
+  audioplayers_darwin: 4027b33a8f471d996c13f71cb77f0b1583b5d923
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_inappwebview_ios: 6f63631e2c62a7c350263b13fa5427aedefe81d4
+  OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
+  package_info_plus: c0502532a26c7662a62a356cebe2692ec5fe4ec4
   path_provider_foundation: 0b743cbb62d8e47eab856f09262bb8c1ddcfe6ba
+  sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
+  url_launcher_ios: bb13df5870e8c4234ca12609d04010a21be43dfa
+  wakelock_plus: 76957ab028e12bfa4e66813c99e46637f367fc7e
 
 PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
 
@@ -1157,6 +2309,7 @@ class VideoRepository {
 
 <file path="lib/logic/bloc/workout_session/workout_session_bloc.dart">
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:mars_workout_app/data/models/workout_session.dart';
 
@@ -1191,7 +2344,7 @@ class WorkoutSessionBloc extends HydratedBloc<WorkoutSessionEvent, WorkoutSessio
       }
       return const WorkoutSessionState();
     } catch (e) {
-      print('Error loading workout session: $e');
+      debugPrint('Error loading workout session: $e');
       return const WorkoutSessionState();
     }
   }
@@ -1204,7 +2357,7 @@ class WorkoutSessionBloc extends HydratedBloc<WorkoutSessionEvent, WorkoutSessio
       }
       return {'session': state.session!.toJson()};
     } catch (e) {
-      print('Error saving workout session: $e');
+      debugPrint('Error saving workout session: $e');
       return null;
     }
   }
@@ -4907,54 +6060,38 @@ Additionally, countdown stages have been integrated as actual workout stages, ma
 - Share workout progress
 </file>
 
-<file path="android/app/src/main/AndroidManifest.xml">
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET" />
+<file path="android/app/src/main/kotlin/com/example/mars_workout_app/MainActivity.kt">
+package com.example.mars_workout_app
 
-    <application
-        android:label="mars_workout_app"
-        android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=""
-            android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
-            <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
-        <meta-data
-            android:name="flutterEmbedding"
-            android:value="2" />
-    </application>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+import android.app.PictureInPictureParams
+import android.os.Build
+import android.util.Rational
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
-        </intent>
-    </queries>
-</manifest>
+class MainActivity : FlutterActivity() {
+    private val CHANNEL = "com.example.mars_workout_app/pip"
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+            if (call.method == "enterPiP") {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val builder = PictureInPictureParams.Builder()
+                    val aspectRatio = Rational(16, 9)
+                    builder.setAspectRatio(aspectRatio)
+                    enterPictureInPictureMode(builder.build())
+                    result.success(null)
+                } else {
+                    result.error("UNAVAILABLE", "PiP not supported on this device", null)
+                }
+            } else {
+                result.notImplemented()
+            }
+        }
+    }
+}
 </file>
 
 <file path="ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json">
@@ -5773,6 +6910,24 @@ class WorkoutSession extends Equatable {
     return DateTime.now().difference(savedAt) < maxAge;
   }
 
+  /// Check if this session represents a completed workout
+  // lib/data/models/workout_session.dart
+
+  bool isWorkoutFinished() {
+    if (workout.stages.isEmpty) return true;
+    if (currentStageIndex >= workout.stages.length) return true;
+
+    final isLastStage = currentStageIndex == workout.stages.length - 1;
+    if (isLastStage) {
+      final lastStage = workout.stages[currentStageIndex];
+      // If the time remaining is less than 500ms, count it as finished.
+      final remaining = lastStage.duration - elapsed;
+      return remaining.inMilliseconds <= 500;
+    }
+
+    return false;
+  }
+
   /// Get a friendly description of workout progress
   String getProgressDescription() {
     final totalStages = workout.stages.length;
@@ -5836,8 +6991,8 @@ class PlanDetailScreen extends StatelessWidget {
           builder: (context, state) {
             // Check if THIS plan is the active one for its type
             final isActive = state.isPlanActive(plan.id, plan.workoutType);
-            // Cache completedDayIds as Set for faster lookups
-            final completedDayIdsSet = Set<String>.from(state.completedDayIds);
+            // completedDayIds is already a Set for O(1) lookups
+            final completedDayIdsSet = state.completedDayIds;
 
             return Column(
               children: [
@@ -6174,467 +7329,6 @@ class PlanListScreen extends StatelessWidget {
 }
 </file>
 
-<file path="lib/presentation/screens/workout/widgets/workout_video_player.dart">
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
-import 'package:mars_workout_app/data/models/workout_model.dart';
-import 'package:mars_workout_app/data/repositories/misc/video_repository.dart';
-import 'package:mars_workout_app/logic/bloc/timer/timer_bloc.dart';
-import 'package:mars_workout_app/logic/cubit/workout_video_cubit.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-
-/// Top-of-screen video section for long workouts:
-/// - Lets the user paste/search a YouTube URL/ID/Playlist
-/// - Plays inline where the GIF normally sits
-/// - Provides a custom fullscreen experience in portrait.
-class WorkoutVideoSection extends StatefulWidget {
-  final Workout workout;
-  final String planDayId;
-  final WorkoutType workoutType;
-
-  const WorkoutVideoSection({
-    super.key,
-    required this.workout,
-    required this.planDayId,
-    required this.workoutType,
-  });
-
-  @override
-  State<WorkoutVideoSection> createState() => _WorkoutVideoSectionState();
-}
-
-class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
-  late final String _sessionKey;
-  YoutubePlayerController? _youtubeController;
-  String? _currentVideoId;
-  String? _currentPlaylistId;
-
-  @override
-  void initState() {
-    super.initState();
-    _sessionKey = widget.planDayId.isNotEmpty ? widget.planDayId : widget.workout.title;
-  }
-
-  @override
-  void dispose() {
-    _youtubeController?.dispose();
-    super.dispose();
-  }
-
-  void _ensureYoutubeController(String? videoId, String? playlistId, bool autoPlay) {
-    if (videoId == null && playlistId == null) {
-      _youtubeController?.dispose();
-      _youtubeController = null;
-      _currentVideoId = null;
-      _currentPlaylistId = null;
-      return;
-    }
-
-    // Check if we already have a controller for this video/playlist
-    if (playlistId != null) {
-      if (_currentPlaylistId == playlistId && _youtubeController != null) return;
-    } else if (videoId != null) {
-      if (_currentVideoId == videoId && _youtubeController != null) return;
-    }
-
-    _youtubeController?.dispose();
-    _youtubeController = YoutubePlayerController(
-      initialVideoId: videoId ?? '',
-      flags: YoutubePlayerFlags(
-        autoPlay: autoPlay,
-        mute: false,
-        enableCaption: true,
-        controlsVisibleAtStart: false,
-      ),
-    );
-
-    _currentVideoId = videoId;
-    _currentPlaylistId = playlistId;
-
-    if (playlistId != null) {
-      // Note: youtube_player_flutter's support for playlists is limited in the basic controller.
-      // Usually, it requires the loadPlaylist method or passing it in flags if supported by the underlying iFrame.
-      // For this package, we can use the videoId and then it might handle the playlist if it's a playlist URL.
-    }
-  }
-
-  Future<void> _openYoutubeSearch(String query) async {
-    final search = Uri.parse('https://www.youtube.com/results?search_query=${Uri.encodeQueryComponent(query)}');
-    await launchUrl(search, mode: LaunchMode.externalApplication);
-  }
-
-  String? _extractVideoId(String? value) {
-    if (value == null) return null;
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-
-    // Direct 11-char ID
-    if (RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(trimmed)) return trimmed;
-
-    // youtu.be/<id>
-    final shortMatch = RegExp(r'youtu\.be/([a-zA-Z0-9_-]{11})').firstMatch(trimmed);
-    if (shortMatch != null) return shortMatch.group(1);
-
-    // youtube.com/watch?v=<id>
-    final watchMatch = RegExp(r'[?&]v=([a-zA-Z0-9_-]{11})').firstMatch(trimmed);
-    if (watchMatch != null) return watchMatch.group(1);
-
-    // youtube.com/embed/<id>
-    final embedMatch = RegExp(r'/embed/([a-zA-Z0-9_-]{11})').firstMatch(trimmed);
-    if (embedMatch != null) return embedMatch.group(1);
-
-    return null;
-  }
-
-  String? _extractPlaylistId(String? value) {
-    if (value == null) return null;
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-
-    final playlistMatch = RegExp(r'[?&]list=([a-zA-Z0-9_-]+)').firstMatch(trimmed);
-    if (playlistMatch != null) return playlistMatch.group(1);
-
-    return null;
-  }
-
-  Future<void> _promptForVideo({String? initialValue}) async {
-    final controller = TextEditingController(text: initialValue ?? '');
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          scrollable: true,
-          title: const Text('Choose YouTube content'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: 'Paste YouTube URL, Video ID, or Playlist ID',
-                  hintText: 'https://youtu.be/xxxx or playlist link',
-                ),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => _openYoutubeSearch(
-                    controller.text.isNotEmpty ? controller.text : widget.workout.title,
-                  ),
-                  icon: const Icon(Icons.search),
-                  label: const Text('Search on YouTube'),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            if ((initialValue ?? '').isNotEmpty)
-              TextButton(
-                onPressed: () => Navigator.of(context).pop('CLEAR'),
-                child: const Text('Clear'),
-              ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (!mounted) return;
-    if (result == null) return;
-    if (result == 'CLEAR') {
-      context.read<WorkoutVideoCubit>().clearVideoForSession(_sessionKey);
-      return;
-    }
-    if (result.isEmpty) return;
-    context.read<WorkoutVideoCubit>().setVideoForSession(_sessionKey, result);
-    
-    // Auto-play the new video immediately after saving
-    setState(() {
-      final videoId = _extractVideoId(result);
-      final playlistId = _extractPlaylistId(result);
-      _ensureYoutubeController(videoId, playlistId, true);
-    });
-  }
-
-  void _openFullscreenPlayer() {
-    if (_currentVideoId == null && _currentPlaylistId == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (ctx) => BlocProvider.value(
-          value: context.read<TimerBloc>(),
-          child: WorkoutVideoFullscreenScreen(
-            videoId: _currentVideoId,
-            playlistId: _currentPlaylistId,
-            workoutTitle: widget.workout.title,
-            workoutDescription: widget.workout.description,
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final videoCubit = context.watch<WorkoutVideoCubit>();
-    final savedVideoInput = videoCubit.getVideoForSession(_sessionKey);
-    final fallbackVideoId = VideoRepository.getYoutubeVideoId(widget.workoutType);
-    final chosenInput = savedVideoInput?.isNotEmpty == true ? savedVideoInput : fallbackVideoId;
-    
-    final youtubeVideoId = _extractVideoId(chosenInput);
-    final youtubePlaylistId = _extractPlaylistId(chosenInput);
-
-    _ensureYoutubeController(youtubeVideoId, youtubePlaylistId, false);
-
-    return Container(
-      width: double.infinity,
-      color: Colors.grey.shade100,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: (youtubeVideoId != null || youtubePlaylistId != null) && _youtubeController != null
-                    ? Stack(
-                        children: [
-                          Positioned.fill(
-                            child: YoutubePlayer(
-                              controller: _youtubeController!,
-                              progressIndicatorColor: theme.primaryColor,
-                              bottomActions: const [
-                                CurrentPosition(),
-                                ProgressBar(isExpanded: true),
-                                RemainingDuration(),
-                                PlaybackSpeedButton(),
-                              ],
-                            ),
-                          ),
-                          Positioned(
-                            right: 8,
-                            bottom: 8,
-                            child: IconButton(
-                              icon: const Icon(Icons.fullscreen, color: Colors.white),
-                              onPressed: _openFullscreenPlayer,
-                            ),
-                          ),
-                        ],
-                      )
-                    : Container(
-                        color: Colors.black,
-                        child: Center(
-                          child: Text(
-                            'Add a YouTube URL, ID, or Playlist to play here',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => _promptForVideo(initialValue: chosenInput),
-                  icon: const Icon(Icons.edit),
-                  label: Text((youtubeVideoId != null || youtubePlaylistId != null) ? 'Change content' : 'Set content'),
-                ),
-                const SizedBox(width: 12),
-                TextButton(
-                  onPressed: () => _openYoutubeSearch(widget.workout.title),
-                  child: const Text('Search YouTube'),
-                ),
-              ],
-            ),
-            if (youtubeVideoId == null && youtubePlaylistId == null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  'Paste a YouTube URL, ID, or Playlist to start playback.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Fullscreen portrait video screen with workout name, info and remaining time.
-class WorkoutVideoFullscreenScreen extends StatefulWidget {
-  final String? videoId;
-  final String? playlistId;
-  final String workoutTitle;
-  final String workoutDescription;
-
-  const WorkoutVideoFullscreenScreen({
-    super.key,
-    this.videoId,
-    this.playlistId,
-    required this.workoutTitle,
-    required this.workoutDescription,
-  });
-
-  @override
-  State<WorkoutVideoFullscreenScreen> createState() => _WorkoutVideoFullscreenScreenState();
-}
-
-class _WorkoutVideoFullscreenScreenState extends State<WorkoutVideoFullscreenScreen> {
-  late final YoutubePlayerController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = YoutubePlayerController(
-      initialVideoId: widget.videoId ?? '',
-      flags: const YoutubePlayerFlags(
-        autoPlay: true,
-        mute: false,
-        enableCaption: true,
-        controlsVisibleAtStart: true,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _showInfo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(widget.workoutTitle),
-        content: Text(
-          widget.workoutDescription.isNotEmpty ? widget.workoutDescription : 'No description available.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Center(
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: YoutubePlayer(
-                  controller: _controller,
-                  progressIndicatorColor: theme.primaryColor,
-                  bottomActions: const [
-                    CurrentPosition(),
-                    ProgressBar(isExpanded: true),
-                    RemainingDuration(),
-                    PlaybackSpeedButton(),
-                  ],
-                  onEnded: (data) {
-                    // This handles basic "auto-next" logic for playlists if the iframe supports it, 
-                    // or you can manually trigger logic here.
-                  },
-                ),
-              ),
-            ),
-            Positioned(
-              top: 8,
-              left: 8,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-            Positioned(
-              right: 16,
-              bottom: 24,
-              child: BlocBuilder<TimerBloc, TimerState>(
-                builder: (context, state) {
-                  final remaining = state.currentStage.duration - state.elapsed;
-                  final totalSeconds = remaining.inSeconds < 0 ? 0 : remaining.inSeconds;
-                  final minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
-                  final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                widget.workoutTitle,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              icon: const Icon(Icons.info_outline, size: 18, color: Colors.white),
-                              onPressed: () => _showInfo(context),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$minutes:$seconds',
-                          style: theme.textTheme.titleMedium?.copyWith(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-</file>
-
 <file path="lib/presentation/widgets/resume_workout_dialog.dart">
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6849,6 +7543,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+.aider*
 </file>
 
 <file path="README.md">
@@ -6868,6 +7563,50 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+</file>
+
+<file path="android/app/src/main/AndroidManifest.xml">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="mars_workout_app"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:supportsPictureInPicture="true"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            >
+
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme"
+                />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
 </file>
 
 <file path="lib/core/services/audio_service.dart">
@@ -6930,6 +7669,7 @@ PlanDay buildDay(int week, int dayNum, String title, Workout workout) {
 
 <file path="lib/data/repositories/workouts/elliptical_repository.dart">
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/data/builders/workout_builder.dart';
 import 'package:mars_workout_app/data/models/training_plan.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
 
@@ -7007,17 +7747,18 @@ TrainingPlan ellipticalHiitPlan() {
 }
 
 Workout _speedIntervals() {
-  return Workout(
+  return WorkoutBuilder.buildSecondIntervals(
     title: 'Speed Intervals (30s/30s)',
     description: 'Classic 1:1 work-to-rest ratio.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Start slow. Incline 5. Resistance 3.'),
-      for (int i = 0; i < 10; i++) ...[
-        const WorkoutStage(name: 'High Resistance Push', duration: Duration(seconds: 30), description: 'Resistance 7-8/10. Focus on the PUSH phase of the stride. Keep torso upright. Do not lean on the console.'),
-        const WorkoutStage(name: 'Low Resistance Spin', duration: Duration(seconds: 30), description: 'Drop resistance to 3/10. Keep feet moving fast but light. Flush the legs.'),
-      ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: 'Gradually lower heart rate.'),
-    ],
+    workSeconds: 30,
+    restSeconds: 30,
+    repetitions: 10,
+    workDescription:
+        'Resistance 7-8/10. Focus on the PUSH phase of the stride. Keep torso upright. Do not lean on the console.',
+    restDescription:
+        'Drop resistance to 3/10. Keep feet moving fast but light. Flush the legs.',
+    warmupDescription: 'Start slow. Incline 5. Resistance 3.',
+    cooldownDescription: 'Gradually lower heart rate.',
   );
 }
 
@@ -7289,6 +8030,395 @@ class TimerControls extends StatelessWidget {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+</file>
+
+<file path="lib/presentation/screens/workout/widgets/workout_video_player.dart">
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/data/models/workout_model.dart';
+import 'package:mars_workout_app/data/repositories/misc/video_repository.dart';
+import 'package:mars_workout_app/logic/bloc/timer/timer_bloc.dart';
+import 'package:mars_workout_app/logic/cubit/workout_video_cubit.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+
+class WorkoutVideoSection extends StatefulWidget {
+  final Workout workout;
+  final String planDayId;
+  final WorkoutType workoutType;
+
+  const WorkoutVideoSection({
+    super.key,
+    required this.workout,
+    required this.planDayId,
+    required this.workoutType,
+  });
+
+  @override
+  State<WorkoutVideoSection> createState() => _WorkoutVideoSectionState();
+}
+
+class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
+  late final String _sessionKey;
+  YoutubePlayerController? _youtubeController;
+  String? _currentVideoId; // Track current ID to prevent needless reloads
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionKey = widget.planDayId.isNotEmpty ? widget.planDayId : widget.workout.title;
+  }
+
+  @override
+  void dispose() {
+    _youtubeController?.dispose();
+    super.dispose();
+  }
+
+  /// Robustly extracts a Video ID from any YouTube link (including playlists)
+  String? _extractVideoId(String? url) {
+    if (url == null || url.trim().isEmpty) return null;
+
+    // 1. Try official helper first
+    String? id = YoutubePlayer.convertUrlToId(url);
+
+    // 2. If null, it might be a playlist URL or specialized link.
+    // We look specifically for the 'v=' parameter which denotes the video.
+    if (id == null) {
+      final regExp = RegExp(r'[?&]v=([^&#]+)');
+      final match = regExp.firstMatch(url);
+      if (match != null) {
+        id = match.group(1);
+      }
+    }
+    return id;
+  }
+
+  void _ensureYoutubeController(String? rawInput) {
+    // 1. Extract the actual Video ID (Ignores playlist ID parts to prevent errors)
+    final videoId = _extractVideoId(rawInput);
+
+    if (videoId == null) {
+      // If we have a controller but no valid video, dispose it
+      if (_youtubeController != null) {
+        _youtubeController!.dispose();
+        _youtubeController = null;
+        _currentVideoId = null;
+      }
+      return;
+    }
+
+    // 2. IMMEDIATE UPDATE: If ID changed, load it instantly
+    if (_youtubeController != null && _currentVideoId != videoId) {
+      _youtubeController!.load(videoId);
+      _currentVideoId = videoId;
+      return;
+    }
+
+    // 3. Initialize if it doesn't exist
+    if (_youtubeController == null) {
+      _youtubeController = YoutubePlayerController(
+        initialVideoId: videoId,
+        flags: const YoutubePlayerFlags(
+          autoPlay: false,
+          mute: false,
+          enableCaption: true,
+          controlsVisibleAtStart: false,
+        ),
+      );
+      _currentVideoId = videoId;
+    }
+  }
+
+  Future<void> _promptForVideo({String? initialValue}) async {
+    final controller = TextEditingController(text: initialValue ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Choose YouTube content'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'Paste Video Link',
+                  hintText: 'https://youtu.be/xxxx',
+                  helperText: 'For playlists, link a specific video to start.',
+                  helperMaxLines: 2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _openYoutubeSearch(
+                    controller.text.isNotEmpty ? controller.text : widget.workout.title,
+                  ),
+                  icon: const Icon(Icons.search),
+                  label: const Text('Search on YouTube'),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            if ((initialValue ?? '').isNotEmpty)
+              TextButton(
+                onPressed: () => Navigator.of(context).pop('CLEAR'),
+                child: const Text('Clear'),
+              ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted || result == null) return;
+
+    if (result == 'CLEAR') {
+      context.read<WorkoutVideoCubit>().clearVideoForSession(_sessionKey);
+      setState(() {
+        _currentVideoId = null;
+        _youtubeController?.dispose();
+        _youtubeController = null;
+      });
+      return;
+    }
+
+    if (result.isNotEmpty) {
+      // Check if it's a playlist-only link (no video ID)
+      if (_extractVideoId(result) == null && result.contains('list=')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please choose a specific video from the playlist to start.')),
+          );
+        }
+        return;
+      }
+
+      context.read<WorkoutVideoCubit>().setVideoForSession(_sessionKey, result);
+
+      // Force UI rebuild to trigger _ensureYoutubeController immediately
+      setState(() {});
+    }
+  }
+
+  Future<void> _openYoutubeSearch(String query) async {
+    final search = Uri.parse('https://www.youtube.com/results?search_query=${Uri.encodeQueryComponent(query)}');
+    await launchUrl(search, mode: LaunchMode.externalApplication);
+  }
+
+  void _openFullscreenPlayer() {
+    if (_currentVideoId == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (ctx) => BlocProvider.value(
+          value: context.read<TimerBloc>(),
+          child: WorkoutVideoFullscreenScreen(
+            videoId: _currentVideoId,
+            workoutTitle: widget.workout.title,
+            workoutDescription: widget.workout.description,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // Watch cubit for changes
+    final videoCubit = context.watch<WorkoutVideoCubit>();
+    final savedVideoInput = videoCubit.getVideoForSession(_sessionKey);
+    final fallbackVideoId = VideoRepository.getYoutubeVideoId(widget.workoutType);
+
+    // Decide source
+    final inputToUse = (savedVideoInput?.isNotEmpty == true)
+        ? savedVideoInput
+        : (fallbackVideoId != null ? 'https://youtu.be/$fallbackVideoId' : null);
+
+    // Initialize/Update Controller
+    _ensureYoutubeController(inputToUse);
+
+    final bool hasPlayer = _youtubeController != null;
+
+    return Container(
+      width: double.infinity,
+      color: Colors.grey.shade100,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: hasPlayer
+                    ? Stack(
+                  children: [
+                    Positioned.fill(
+                      child: YoutubePlayer(
+                        controller: _youtubeController!,
+                        progressIndicatorColor: theme.primaryColor,
+                        bottomActions: const [
+                          CurrentPosition(),
+                          ProgressBar(isExpanded: true),
+                          RemainingDuration(),
+                          PlaybackSpeedButton(),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      right: 8,
+                      bottom: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.fullscreen, color: Colors.white),
+                        onPressed: _openFullscreenPlayer,
+                      ),
+                    ),
+                  ],
+                )
+                    : Container(
+                  color: Colors.black,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'Add a YouTube URL to play here',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _promptForVideo(initialValue: savedVideoInput),
+                  icon: const Icon(Icons.edit),
+                  label: Text(hasPlayer ? 'Change content' : 'Set content'),
+                ),
+                const SizedBox(width: 12),
+                TextButton(
+                  onPressed: () => _openYoutubeSearch(widget.workout.title),
+                  child: const Text('Search'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Fullscreen player remains largely the same, just ensure it accepts single videoId
+class WorkoutVideoFullscreenScreen extends StatefulWidget {
+  final String? videoId;
+  final String workoutTitle;
+  final String workoutDescription;
+
+  const WorkoutVideoFullscreenScreen({
+    super.key,
+    this.videoId,
+    required this.workoutTitle,
+    required this.workoutDescription,
+  });
+
+  @override
+  State<WorkoutVideoFullscreenScreen> createState() => _WorkoutVideoFullscreenScreenState();
+}
+
+class _WorkoutVideoFullscreenScreenState extends State<WorkoutVideoFullscreenScreen> {
+  late final YoutubePlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = YoutubePlayerController(
+      initialVideoId: widget.videoId ?? '',
+      flags: const YoutubePlayerFlags(
+        autoPlay: true,
+        mute: false,
+        enableCaption: true,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: YoutubePlayer(
+                  controller: _controller,
+                  progressIndicatorColor: theme.primaryColor,
+                  bottomActions: const [
+                    CurrentPosition(),
+                    ProgressBar(isExpanded: true),
+                    RemainingDuration(),
+                    PlaybackSpeedButton(),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8, left: 8,
+              child: IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
+            ),
+            Positioned(
+              right: 16,
+              bottom: 24,
+              child: BlocBuilder<TimerBloc, TimerState>(
+                builder: (context, state) {
+                  final remaining = state.currentStage.duration - state.elapsed;
+                  final totalSeconds = remaining.inSeconds < 0 ? 0 : remaining.inSeconds;
+                  final minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+                  final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(12)),
+                    child: Text('$minutes:$seconds', style: theme.textTheme.titleMedium?.copyWith(color: Colors.white)),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -7640,8 +8770,9 @@ class TrainingPlan extends Equatable {
 
   const TrainingPlan({required this.id, required this.title, required this.description, required this.difficulty, required this.weeks, this.workoutType = WorkoutType.other});
 
-  // Calculate total progress based on completed workout IDs
-  double calculateProgress(List<String> completedWorkoutIds) {
+  /// Calculates progress based on completed workout IDs.
+  /// Uses Set for O(1) lookup performance instead of List's O(n).
+  double calculateProgress(Set<String> completedWorkoutIds) {
     int total = 0;
     int completed = 0;
     for (var week in weeks) {
@@ -7728,42 +8859,11 @@ class PlanDay extends Equatable {
 
 <file path="lib/data/repositories/workouts/cycling_repository.dart">
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/data/builders/workout_builder.dart';
+import 'package:mars_workout_app/data/config/training_zones.dart';
 import '../../models/training_plan.dart';
 import '../../models/workout_model.dart';
 import '../misc/misc_repository.dart';
-
-// ==============================================================================
-// ZONE DESCRIPTIONS (Single Source of Truth)
-// ==============================================================================
-class ZoneDesc {
-  static const String z0 =
-      "Warm Up: Very light spinning.\n"
-      "Get the blood flowing and legs ready. Minimal effort, just turning the pedals.";
-
-  static const String z1 =
-      "Active Recovery: Can sing a song.\n"
-      "Very easy spinning with minimal resistance. Use this to flush out legs and recover.";
-
-  static const String z2 =
-      "Endurance: Can hold a full conversation.\n"
-      "'All day' pace. You are working but not struggling. This burns fat and builds your aerobic engine.";
-
-  static const String z3 =
-      "Tempo: Can speak in short sentences.\n"
-      "'Comfortably Hard.' You have to focus to keep this pace up. Breathing is deeper and rhythmic.";
-
-  static const String sweetSpot =
-      "Sweet Spot: Can speak a few words at a time.\n"
-      "The 'Goldilocks' zone. Hard enough to build big power, but sustainable for long blocks (10-20m).";
-
-  static const String z4 =
-      "Threshold: Can hardly speak.\n"
-      "Your 1-hour race pace. Legs start to burn significantly. Requires mental toughness to hold.";
-
-  static const String z5 =
-      "Max Effort: Cannot speak.\n"
-      "All-out effort. Sprints or steep hill attacks. You should be gasping for air.";
-}
 
 // ==============================================================================
 // 1. DISCOVERY 30KM BEGINNER PLAN
@@ -7839,26 +8939,17 @@ TrainingPlan discovery30kmBeginnerPlan() {
 // --- DISCOVERY WORKOUT HELPERS ---
 
 Workout _restDayWorkout() {
-  return const Workout(
-    title: 'Rest Day',
-    description: 'Rest is vital. Mark this day as complete to stay on track.',
-    stages: [WorkoutStage(name: 'Resting...', duration: Duration(seconds: 1), description: 'Relax. Good sleep is the best recovery tool.')],
-  );
+  return WorkoutBuilder.buildRestDay();
 }
 
 Workout _discBaseRide(int mins) {
-  return Workout(
+  return WorkoutBuilder.buildSteadyWorkout(
     title: 'Base Ride ($mins mins)',
-    description: 'Steady aerobic miles. Focus on smooth pedal circles.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: ZoneDesc.z0),
-      WorkoutStage(
-        name: 'Steady Ride',
-        duration: Duration(minutes: mins - 10),
-        description: ZoneDesc.z2,
-      ),
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
-    ],
+    steadyMinutes: mins - 10,
+    steadyDescription: CyclingZones.z2,
+    workoutDescription: 'Steady aerobic miles. Focus on smooth pedal circles.',
+    warmupDescription: CyclingZones.z0,
+    cooldownDescription: CyclingZones.z1,
   );
 }
 
@@ -7867,9 +8958,9 @@ Workout _discRecoveryRide() {
     title: 'Recovery Ride (30m)',
     description: 'Flush out the legs. If you sweat, you are going too hard.',
     stages: [
-      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: ZoneDesc.z0),
-      WorkoutStage(name: 'Recovery Spin', duration: Duration(minutes: 20), description: ZoneDesc.z1),
-      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
+      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: CyclingZones.z0),
+      WorkoutStage(name: 'Recovery Spin', duration: Duration(minutes: 20), description: CyclingZones.z1),
+      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: CyclingZones.z1),
     ],
   );
 }
@@ -7879,45 +8970,30 @@ Workout _discIMTGRide(int mins) {
     title: 'IMTG Ride ($mins mins)',
     description: 'FASTED RIDE (No breakfast). Teaches body to burn fat. Keep intensity LOW.',
     stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: ZoneDesc.z0),
+      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: CyclingZones.z0),
       WorkoutStage(
         name: 'Fasted Zone 2',
         duration: Duration(minutes: mins),
-        description: "${ZoneDesc.z2}\nIMPORTANT: Do not spike your heart rate.",
+        description: "${CyclingZones.z2}\nIMPORTANT: Do not spike your heart rate.",
       ),
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: CyclingZones.z1),
     ],
   );
 }
 
 Workout _discIntervals(int warm, int sets, int work, int rest, int cool) {
-  return Workout(
+  return WorkoutBuilder.buildTimeIntervals(
     title: 'Intervals ($sets x $work min)',
-    description: 'High intensity efforts to build speed and power.',
-    stages: [
-      WorkoutStage(
-        name: 'Warm-up',
-        duration: Duration(minutes: warm),
-        description: "Progressive: Start Z0, build to Z2.",
-      ),
-      for (int i = 0; i < sets; i++) ...[
-        WorkoutStage(
-          name: 'Hard Effort',
-          duration: Duration(minutes: work),
-          description: ZoneDesc.z4,
-        ),
-        WorkoutStage(
-          name: 'Recovery',
-          duration: Duration(minutes: rest),
-          description: ZoneDesc.z1,
-        ),
-      ],
-      WorkoutStage(
-        name: 'Cool-down',
-        duration: Duration(minutes: cool),
-        description: ZoneDesc.z1,
-      ),
-    ],
+    workMinutes: work,
+    restMinutes: rest,
+    repetitions: sets,
+    workDescription: CyclingZones.z4,
+    workoutDescription: 'High intensity efforts to build speed and power.',
+    restDescription: CyclingZones.z1,
+    warmupMinutes: warm,
+    cooldownMinutes: cool,
+    warmupDescription: 'Progressive: Start Z0, build to Z2.',
+    cooldownDescription: CyclingZones.z1,
   );
 }
 
@@ -7929,20 +9005,20 @@ Workout _discHillIntervals(int warm, int sets, int work, int cool) {
       WorkoutStage(
         name: 'Warm-up',
         duration: Duration(minutes: warm),
-        description: ZoneDesc.z2,
+        description: CyclingZones.z2,
       ),
       for (int i = 0; i < sets; i++) ...[
         WorkoutStage(
           name: 'Seated Climb',
           duration: Duration(minutes: work),
-          description: "${ZoneDesc.z3}\nTechnique: Stay seated, hands on tops, drive from the glutes.",
+          description: "${CyclingZones.z3}\nTechnique: Stay seated, hands on tops, drive from the glutes.",
         ),
-        const WorkoutStage(name: 'Recovery', duration: Duration(minutes: 8), description: ZoneDesc.z1),
+        const WorkoutStage(name: 'Recovery', duration: Duration(minutes: 8), description: CyclingZones.z1),
       ],
       WorkoutStage(
         name: 'Cool-down',
         duration: Duration(minutes: cool),
-        description: ZoneDesc.z1,
+        description: CyclingZones.z1,
       ),
     ],
   );
@@ -7953,13 +9029,13 @@ Workout _discPrimingRide() {
     title: 'Race Priming (30m)',
     description: 'Short ride with bursts to wake up the legs without fatigue.',
     stages: [
-      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: ZoneDesc.z0),
-      WorkoutStage(name: 'Accel 1', duration: Duration(minutes: 2), description: "${ZoneDesc.z3}\nHigh gear strength."),
-      WorkoutStage(name: 'Rest', duration: Duration(minutes: 4), description: ZoneDesc.z1),
-      WorkoutStage(name: 'Accel 2', duration: Duration(minutes: 2), description: "${ZoneDesc.z4}\nPick up speed."),
-      WorkoutStage(name: 'Rest', duration: Duration(minutes: 4), description: ZoneDesc.z1),
-      WorkoutStage(name: 'Accel 3', duration: Duration(minutes: 2), description: "${ZoneDesc.z5}\nRace pace feeling!"),
-      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 6), description: ZoneDesc.z1),
+      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: CyclingZones.z0),
+      WorkoutStage(name: 'Accel 1', duration: Duration(minutes: 2), description: "${CyclingZones.z3}\nHigh gear strength."),
+      WorkoutStage(name: 'Rest', duration: Duration(minutes: 4), description: CyclingZones.z1),
+      WorkoutStage(name: 'Accel 2', duration: Duration(minutes: 2), description: "${CyclingZones.z4}\nPick up speed."),
+      WorkoutStage(name: 'Rest', duration: Duration(minutes: 4), description: CyclingZones.z1),
+      WorkoutStage(name: 'Accel 3', duration: Duration(minutes: 2), description: "${CyclingZones.z5}\nRace pace feeling!"),
+      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 6), description: CyclingZones.z1),
     ],
   );
 }
@@ -8015,50 +9091,38 @@ TrainingPlan bicycleNetwork150kmPlan() {
 }
 
 Workout _bnAerobicRide(int totalMinutes) {
-  return Workout(
+  return WorkoutBuilder.buildSteadyWorkout(
     title: 'Aerobic Ride ($totalMinutes mins)',
-    description: 'Ride at a pace you could ride all day.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: ZoneDesc.z0),
-      WorkoutStage(
-        name: 'Aerobic Base',
-        duration: Duration(minutes: totalMinutes - 10),
-        description: ZoneDesc.z2,
-      ),
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
-    ],
+    steadyMinutes: totalMinutes - 10,
+    steadyDescription: CyclingZones.z2,
+    workoutDescription: 'Ride at a pace you could ride all day.',
+    warmupDescription: CyclingZones.z0,
+    cooldownDescription: CyclingZones.z1,
   );
 }
 
 Workout _bnTempoRide(int totalMinutes) {
-  return Workout(
+  return WorkoutBuilder.buildSteadyWorkout(
     title: 'Tempo Ride ($totalMinutes mins)',
-    description: 'Harder than aerobic. Breathing becomes audible.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: ZoneDesc.z0),
-      WorkoutStage(
-        name: 'Tempo Effort',
-        duration: Duration(minutes: totalMinutes - 15),
-        description: ZoneDesc.z3,
-      ),
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
-    ],
+    steadyMinutes: totalMinutes - 15,
+    steadyDescription: CyclingZones.z3,
+    workoutDescription: 'Harder than aerobic. Breathing becomes audible.',
+    warmupMinutes: 10,
+    warmupDescription: CyclingZones.z0,
+    cooldownDescription: CyclingZones.z1,
   );
 }
 
 Workout _bnEnduranceRide(int totalMinutes) {
-  return Workout(
+  return WorkoutBuilder.buildSteadyWorkout(
     title: 'Endurance Ride (${(totalMinutes / 60).toStringAsFixed(1)} hrs)',
-    description: 'Long steady distance. Build mental and physical stamina.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: ZoneDesc.z0),
-      WorkoutStage(
-        name: 'The Long Ride',
-        duration: Duration(minutes: totalMinutes - 20),
-        description: ZoneDesc.z2,
-      ),
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: ZoneDesc.z1),
-    ],
+    steadyMinutes: totalMinutes - 20,
+    steadyDescription: CyclingZones.z2,
+    workoutDescription: 'Long steady distance. Build mental and physical stamina.',
+    warmupMinutes: 10,
+    cooldownMinutes: 10,
+    warmupDescription: CyclingZones.z0,
+    cooldownDescription: CyclingZones.z1,
   );
 }
 
@@ -8071,20 +9135,20 @@ Workout _bnSweetSpotWorkout(int week) {
     title: 'Sweet Spot Blocks',
     description: 'Effort just below your threshold.',
     stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 15), description: ZoneDesc.z2),
+      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 15), description: CyclingZones.z2),
       for (int i = 0; i < reps; i++) ...[
         WorkoutStage(
           name: 'Sweet Spot',
           duration: Duration(minutes: workMin),
-          description: ZoneDesc.sweetSpot,
+          description: CyclingZones.sweetSpot,
         ),
         WorkoutStage(
           name: 'Recovery',
           duration: Duration(minutes: restMin),
-          description: ZoneDesc.z1,
+          description: CyclingZones.z1,
         ),
       ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: ZoneDesc.z1),
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: CyclingZones.z1),
     ],
   );
 }
@@ -8094,9 +9158,9 @@ Workout _bnHighCadenceDrills() {
     title: 'High Cadence Drills',
     description: '1 min fast spin, 4 min recovery. Improves efficiency.',
     stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 15), description: ZoneDesc.z2),
-      for (int i = 0; i < 8; i++) ...[const WorkoutStage(name: 'Spin-Up!', duration: Duration(minutes: 1), description: "Max RPM: Spin as fast as you can without bouncing in the saddle (100-120 RPM)."), const WorkoutStage(name: 'Recovery', duration: Duration(minutes: 4), description: ZoneDesc.z1)],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: ZoneDesc.z1),
+      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 15), description: CyclingZones.z2),
+      for (int i = 0; i < 8; i++) ...[const WorkoutStage(name: 'Spin-Up!', duration: Duration(minutes: 1), description: "Max RPM: Spin as fast as you can without bouncing in the saddle (100-120 RPM)."), const WorkoutStage(name: 'Recovery', duration: Duration(minutes: 4), description: CyclingZones.z1)],
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: CyclingZones.z1),
     ],
   );
 }
@@ -8161,14 +9225,14 @@ Workout speedIntervalsWorkout({required bool isShort}) {
       WorkoutStage(
         name: 'Warm-up',
         duration: Duration(minutes: isShort ? 5 : 10),
-        description: ZoneDesc.z0,
+        description: CyclingZones.z0,
       ),
       for (int i = 0; i < (isShort ? 4 : 8); i++) ...[
-        const WorkoutStage(name: 'Tempo Effort', duration: Duration(minutes: 2), description: ZoneDesc.z3),
-        const WorkoutStage(name: 'Max Sprint', duration: Duration(seconds: 30), description: ZoneDesc.z5),
-        const WorkoutStage(name: 'Recovery', duration: Duration(minutes: 2), description: ZoneDesc.z1),
+        const WorkoutStage(name: 'Tempo Effort', duration: Duration(minutes: 2), description: CyclingZones.z3),
+        const WorkoutStage(name: 'Max Sprint', duration: Duration(seconds: 30), description: CyclingZones.z5),
+        const WorkoutStage(name: 'Recovery', duration: Duration(minutes: 2), description: CyclingZones.z1),
       ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: CyclingZones.z1),
     ],
   );
 }
@@ -8178,35 +9242,35 @@ Workout ladderIntervalsWorkout({required bool isShort}) {
     title: isShort ? 'Ladder Intervals (30m)' : 'Ladder Intervals (60m)',
     description: 'Progressively longer intervals.',
     stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: ZoneDesc.z0),
+      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: CyclingZones.z0),
       ...[1, 2, 3, 2, 1]
           .map(
             (min) => [
               WorkoutStage(
                 name: '$min min Effort',
                 duration: Duration(minutes: min),
-                description: ZoneDesc.z4,
+                description: CyclingZones.z4,
               ),
-              const WorkoutStage(name: 'Rest', duration: Duration(minutes: 1), description: ZoneDesc.z1),
+              const WorkoutStage(name: 'Rest', duration: Duration(minutes: 1), description: CyclingZones.z1),
             ],
           )
           .expand((i) => i),
       if (!isShort) ...[
-        const WorkoutStage(name: 'Set Break', duration: Duration(minutes: 5), description: ZoneDesc.z1),
+        const WorkoutStage(name: 'Set Break', duration: Duration(minutes: 5), description: CyclingZones.z1),
         ...[1, 2, 3, 2, 1]
             .map(
               (min) => [
                 WorkoutStage(
                   name: '$min min Effort',
                   duration: Duration(minutes: min),
-                  description: ZoneDesc.z4,
+                  description: CyclingZones.z4,
                 ),
-                const WorkoutStage(name: 'Rest', duration: Duration(minutes: 1), description: ZoneDesc.z1),
+                const WorkoutStage(name: 'Rest', duration: Duration(minutes: 1), description: CyclingZones.z1),
               ],
             )
             .expand((i) => i),
       ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: CyclingZones.z1),
     ],
   );
 }
@@ -8216,13 +9280,13 @@ Workout climbingBurstsWorkout({required bool isShort}) {
     title: isShort ? 'Climbing Bursts (30m)' : 'Climbing Bursts (60m)',
     description: 'Simulated hill attacks.',
     stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: ZoneDesc.z0),
+      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: CyclingZones.z0),
       for (int i = 0; i < (isShort ? 5 : 10); i++) ...[
-        const WorkoutStage(name: 'Climb Base', duration: Duration(minutes: 3), description: "${ZoneDesc.z3}\nLow cadence (60rpm)."),
-        const WorkoutStage(name: 'Attack!', duration: Duration(seconds: 30), description: "${ZoneDesc.z5}\nStand and Pedal 100%."),
-        const WorkoutStage(name: 'Descend', duration: Duration(minutes: 1, seconds: 30), description: "${ZoneDesc.z1}\nRecover high cadence."),
+        const WorkoutStage(name: 'Climb Base', duration: Duration(minutes: 3), description: "${CyclingZones.z3}\nLow cadence (60rpm)."),
+        const WorkoutStage(name: 'Attack!', duration: Duration(seconds: 30), description: "${CyclingZones.z5}\nStand and Pedal 100%."),
+        const WorkoutStage(name: 'Descend', duration: Duration(minutes: 1, seconds: 30), description: "${CyclingZones.z1}\nRecover high cadence."),
       ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
+      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: CyclingZones.z1),
     ],
   );
 }
@@ -8232,11 +9296,11 @@ Workout powerHourWorkout() {
     title: 'Power Hour: Sweet Spot',
     description: 'Sustained effort at 88-93% FTP.',
     stages: [
-      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: ZoneDesc.z0),
-      WorkoutStage(name: 'Sweet Spot 1', duration: Duration(minutes: 20), description: ZoneDesc.sweetSpot),
-      WorkoutStage(name: 'Recovery', duration: Duration(minutes: 5), description: ZoneDesc.z1),
-      WorkoutStage(name: 'Sweet Spot 2', duration: Duration(minutes: 20), description: ZoneDesc.sweetSpot),
-      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
+      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: CyclingZones.z0),
+      WorkoutStage(name: 'Sweet Spot 1', duration: Duration(minutes: 20), description: CyclingZones.sweetSpot),
+      WorkoutStage(name: 'Recovery', duration: Duration(minutes: 5), description: CyclingZones.z1),
+      WorkoutStage(name: 'Sweet Spot 2', duration: Duration(minutes: 20), description: CyclingZones.sweetSpot),
+      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: CyclingZones.z1),
     ],
   );
 }
@@ -8246,13 +9310,13 @@ Workout powerHourThreshold() {
     title: 'Power Hour: Threshold',
     description: 'Higher intensity intervals at 100% FTP.',
     stages: [
-      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: ZoneDesc.z0),
-      WorkoutStage(name: 'Threshold 1', duration: Duration(minutes: 10), description: ZoneDesc.z4),
-      WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: ZoneDesc.z1),
-      WorkoutStage(name: 'Threshold 2', duration: Duration(minutes: 10), description: ZoneDesc.z4),
-      WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: ZoneDesc.z1),
-      WorkoutStage(name: 'Threshold 3', duration: Duration(minutes: 10), description: ZoneDesc.z4),
-      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: ZoneDesc.z1),
+      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: CyclingZones.z0),
+      WorkoutStage(name: 'Threshold 1', duration: Duration(minutes: 10), description: CyclingZones.z4),
+      WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: CyclingZones.z1),
+      WorkoutStage(name: 'Threshold 2', duration: Duration(minutes: 10), description: CyclingZones.z4),
+      WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: CyclingZones.z1),
+      WorkoutStage(name: 'Threshold 3', duration: Duration(minutes: 10), description: CyclingZones.z4),
+      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: CyclingZones.z1),
     ],
   );
 }
@@ -8262,9 +9326,9 @@ Workout powerHourSteady() {
     title: 'Power Hour: Steady State',
     description: 'One long, unbroken effort.',
     stages: [
-      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: ZoneDesc.z0),
-      WorkoutStage(name: 'The Block', duration: Duration(minutes: 45), description: "${ZoneDesc.z3}\nDo not stop."),
-      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: ZoneDesc.z1),
+      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: CyclingZones.z0),
+      WorkoutStage(name: 'The Block', duration: Duration(minutes: 45), description: "${CyclingZones.z3}\nDo not stop."),
+      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5), description: CyclingZones.z1),
     ],
   );
 }
@@ -8274,9 +9338,9 @@ Workout sundayRideWorkout() {
     title: 'Sunday Endurance',
     description: 'A very low-intensity ride to aid recovery.',
     stages: [
-      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: ZoneDesc.z0),
-      WorkoutStage(name: 'Steady State', duration: Duration(minutes: 40), description: ZoneDesc.z2),
-      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: ZoneDesc.z1),
+      WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: CyclingZones.z0),
+      WorkoutStage(name: 'Steady State', duration: Duration(minutes: 40), description: CyclingZones.z2),
+      WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: CyclingZones.z1),
     ],
   );
 }
@@ -8299,9 +9363,9 @@ TrainingPlan cyclingPlan() {
               title: 'Endurance Ride',
               description: 'Focus on maintaining a steady pace.',
               stages: [
-                WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: ZoneDesc.z0),
-                WorkoutStage(name: 'Main Set', duration: Duration(minutes: 30), description: ZoneDesc.z2),
-                WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: ZoneDesc.z1),
+                WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: CyclingZones.z0),
+                WorkoutStage(name: 'Main Set', duration: Duration(minutes: 30), description: CyclingZones.z2),
+                WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10), description: CyclingZones.z1),
               ],
             ),
           );
@@ -8314,33 +9378,10 @@ TrainingPlan cyclingPlan() {
 
 <file path="lib/data/repositories/workouts/rowing_repository.dart">
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/data/builders/workout_builder.dart';
+import 'package:mars_workout_app/data/config/training_zones.dart';
 import 'package:mars_workout_app/data/models/training_plan.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
-
-// ==============================================================================
-// ZONE / PACING DESCRIPTIONS (Rowing Specific)
-// ==============================================================================
-class RowPace {
-  static const String steady =
-      "Steady State (UT2): 18-20 SPM.\n"
-      "Moderate effort. You should be able to hold a conversation. Focus on technique and rhythm.";
-
-  static const String intermediateSteady =
-      "Steady Distance: 20-24 SPM.\n"
-      "Solid aerobic work. consistent split.";
-
-  static const String hardDistance =
-      "Hard Distance (UT1/AT): Unrestricted Rate.\n"
-      "Faster than steady state. This is a time-trial effort (approx 80-90% max).";
-
-  static const String speedInterval =
-      "Speed Interval (TR): High Intensity.\n"
-      "Row faster than your 2k race pace. Maximum sustainable power.";
-
-  static const String enduranceInterval =
-      "Endurance Interval (AT): 2k Pace.\n"
-      "Hold your target 2k race pace. These are mentally tough.";
-}
 
 // ==============================================================================
 // 1. INSIDE INDOOR: INTERMEDIATE 2KM PLAN (100% Accurate to PDF)
@@ -8447,54 +9488,27 @@ TrainingPlan insideIndoorIntermediatePlan() {
 // --- INTERMEDIATE HELPERS ---
 
 Workout _iiPyramid(int totalMins, List<int> minutes, List<int> rates) {
-  List<WorkoutStage> stages = [const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10))];
-
-  for (int i = 0; i < minutes.length; i++) {
-    stages.add(
-      WorkoutStage(
-        name: '${minutes[i]} min @ ${rates[i]} spm',
-        duration: Duration(minutes: minutes[i]),
-        description: 'Hold strict rate ${rates[i]}. Focus on power per stroke.',
-      ),
-    );
-  }
-
-  stages.add(const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)));
-
-  return Workout(title: '$totalMins min Rate Pyramid', description: 'Control your stroke rate. Build intensity as rate goes up.', stages: stages);
+  return WorkoutBuilder.buildPyramid(
+    title: '$totalMins min Rate Pyramid',
+    durations: minutes,
+    intensities: rates,
+    stageNameBuilder: (duration, intensity) => '$duration min @ $intensity spm',
+    descriptionBuilder: (intensity) =>
+        'Hold strict rate $intensity. Focus on power per stroke.',
+    workoutDescription: 'Control your stroke rate. Build intensity as rate goes up.',
+  );
 }
 
 Workout _iiSetIntervals(int sets, int reps, int workMin, int restMin) {
-  List<WorkoutStage> stages = [const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10))];
-
-  for (int s = 1; s <= sets; s++) {
-    for (int r = 1; r <= reps; r++) {
-      stages.add(
-        WorkoutStage(
-          name: 'Sprint ($r/$reps)',
-          duration: Duration(minutes: workMin),
-          description: 'High Intensity! Fast rating.',
-        ),
-      );
-      if (r < reps) {
-        stages.add(
-          WorkoutStage(
-            name: 'Rest',
-            duration: Duration(minutes: restMin),
-            description: 'Paddle light.',
-          ),
-        );
-      }
-    }
-    // Rest between sets (3 mins usually per plan)
-    if (s < sets) {
-      stages.add(const WorkoutStage(name: 'Set Rest', duration: Duration(minutes: 3), description: 'Long recovery paddle.'));
-    }
-  }
-
-  stages.add(const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)));
-
-  return Workout(title: '$sets Sets of ($reps x ${workMin}min)', description: 'High intensity sprints. 1 min rest between reps, 3 min between sets.', stages: stages);
+  return WorkoutBuilder.buildSetIntervals(
+    title: '$sets Sets of ($reps x ${workMin}min)',
+    sets: sets,
+    repsPerSet: reps,
+    workMinutes: workMin,
+    restMinutes: restMin,
+    workDescription: 'High Intensity! Fast rating.',
+    setRestDescription: 'Long recovery paddle.',
+  );
 }
 
 Workout _iiVariableSteps(List<int> minutes, List<int> rates, String title) {
@@ -8584,64 +9598,34 @@ TrainingPlan insideIndoorBeginnerPlan() {
 // --- INSIDE INDOOR / BRITISH ROWING BEGINNER HELPERS ---
 
 Workout _iiIntervals(int workMin, int restMin, int reps, String intensity) {
-  return Workout(
+  return WorkoutBuilder.buildTimeIntervals(
     title: '${workMin}min Intervals ($reps reps)',
-    description: '$intensity. Focus on technique.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5), description: 'Pick drill & easy rowing.'),
-      for (int i = 0; i < reps; i++) ...[
-        WorkoutStage(
-          name: 'Row',
-          duration: Duration(minutes: workMin),
-          description: '$intensity. Maintain consistent stroke rate (18-24).',
-        ),
-        WorkoutStage(
-          name: 'Rest',
-          duration: Duration(minutes: restMin),
-          description: 'Light paddling or complete rest.',
-        ),
-      ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)),
-    ],
+    workMinutes: workMin,
+    restMinutes: restMin,
+    repetitions: reps,
+    workDescription: '$intensity. Maintain consistent stroke rate (18-24).',
+    workoutDescription: '$intensity. Focus on technique.',
+    warmupDescription: 'Pick drill & easy rowing.',
   );
 }
 
 Workout _iiDistanceIntervals(int meters, int restSec, int reps, String intensity) {
-  return Workout(
+  return WorkoutBuilder.buildDistanceIntervals(
     title: '${meters}m Intervals ($reps reps)',
-    description: '$intensity. Note your time for each piece.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5)),
-      for (int i = 0; i < reps; i++) ...[
-        WorkoutStage(
-          name: '$meters meters',
-          duration: Duration(minutes: (meters ~/ 200)),
-          description: '$intensity. Estimated time.',
-        ),
-        WorkoutStage(
-          name: 'Rest',
-          duration: Duration(seconds: restSec),
-          description: 'Recover.',
-        ),
-      ],
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)),
-    ],
+    meters: meters,
+    restSeconds: restSec,
+    repetitions: reps,
+    intensity: intensity,
+    workoutDescription: '$intensity. Note your time for each piece.',
   );
 }
 
 Workout _iiSteady(int mins, String title) {
-  return Workout(
+  return WorkoutBuilder.buildSteadyWorkout(
     title: title,
-    description: 'Continuous rowing at a sustainable pace.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 3)),
-      WorkoutStage(
-        name: 'Steady Row',
-        duration: Duration(minutes: mins),
-        description: 'Focus on posture and rhythm. 18-22 SPM.',
-      ),
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 3)),
-    ],
+    steadyMinutes: mins,
+    steadyDescription: 'Focus on posture and rhythm. 18-22 SPM.',
+    workoutDescription: 'Continuous rowing at a sustainable pace.',
   );
 }
 
@@ -8677,20 +9661,9 @@ Workout _iiStrokeBursts(int reps) {
 }
 
 Workout _iiDistanceTest(int meters, String title) {
-  // Approximate duration placeholder for progress bar
-  int estMin = meters ~/ 200;
-  return Workout(
+  return WorkoutBuilder.buildDistanceTest(
+    meters: meters,
     title: title,
-    description: 'Complete the distance. Record your time.',
-    stages: [
-      const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10), description: 'Thorough warm-up.'),
-      WorkoutStage(
-        name: '$meters meters',
-        duration: Duration(minutes: estMin),
-        description: 'Pace yourself. Aim for a consistent split.',
-      ),
-      const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
-    ],
   );
 }
 
@@ -8795,11 +9768,7 @@ TrainingPlan thePetePlan() {
 // --- PETE PLAN WORKOUT GENERATORS ---
 
 Workout _ppRestDay() {
-  return const Workout(
-    title: 'Rest Day',
-    description: 'Recover. Hydrate. Sleep.',
-    stages: [WorkoutStage(name: 'Rest', duration: Duration(seconds: 1), description: 'Rest day complete.')],
-  );
+  return WorkoutBuilder.buildRestDay();
 }
 
 Workout _ppSteadyDistance() {
@@ -8808,7 +9777,7 @@ Workout _ppSteadyDistance() {
     description: 'Aerobic base building. Recommended: 10,000m or ~40-60 mins.',
     stages: [
       WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 5)),
-      WorkoutStage(name: 'Steady Row (10km)', duration: Duration(minutes: 45), description: "${RowPace.steady}\nRate: 22-25 spm. Do not go too hard."),
+      WorkoutStage(name: 'Steady Row (10km)', duration: Duration(minutes: 45), description: "${RowingZones.steady}\nRate: 22-25 spm. Do not go too hard."),
       WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 5)),
     ],
   );
@@ -8820,7 +9789,7 @@ Workout _ppHardDistance() {
     description: 'A continuous hard piece. 5km, 6km, or 30mins.',
     stages: [
       WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      WorkoutStage(name: 'Hard 5k', duration: Duration(minutes: 20), description: "${RowPace.hardDistance}\nFaster than steady days. No rate limit."),
+      WorkoutStage(name: 'Hard 5k', duration: Duration(minutes: 20), description: "${RowingZones.hardDistance}\nFaster than steady days. No rate limit."),
       WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );
@@ -8834,7 +9803,7 @@ Workout _ppSpeed8x500() {
     description: 'Classic speed. Total: 4000m work.',
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      for (int i = 1; i <= 8; i++) ...[const WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowPace.speedInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 3, seconds: 30), description: 'Paddle light.')],
+      for (int i = 1; i <= 8; i++) ...[const WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowingZones.speedInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 3, seconds: 30), description: 'Paddle light.')],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );
@@ -8847,22 +9816,22 @@ Workout _ppSpeedPyramid() {
     stages: [
       WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
       // 250m (Rest 1:30)
-      WorkoutStage(name: '250m Sprint', duration: Duration(seconds: 50), description: RowPace.speedInterval),
+      WorkoutStage(name: '250m Sprint', duration: Duration(seconds: 50), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 1, seconds: 30)),
       // 500m (Rest 3:00)
-      WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowPace.speedInterval),
+      WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 3)),
       // 750m (Rest 4:30)
-      WorkoutStage(name: '750m Sprint', duration: Duration(minutes: 2, seconds: 40), description: RowPace.speedInterval),
+      WorkoutStage(name: '750m Sprint', duration: Duration(minutes: 2, seconds: 40), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 4, seconds: 30)),
       // 1000m (Rest 6:00) - The Peak
-      WorkoutStage(name: '1000m Sprint', duration: Duration(minutes: 3, seconds: 40), description: RowPace.speedInterval),
+      WorkoutStage(name: '1000m Sprint', duration: Duration(minutes: 3, seconds: 40), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 6)),
       // 750m (Rest 4:30)
-      WorkoutStage(name: '750m Sprint', duration: Duration(minutes: 2, seconds: 40), description: RowPace.speedInterval),
+      WorkoutStage(name: '750m Sprint', duration: Duration(minutes: 2, seconds: 40), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 4, seconds: 30)),
       // 500m (Rest 3:00)
-      WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowPace.speedInterval),
+      WorkoutStage(name: '500m Sprint', duration: Duration(minutes: 1, seconds: 45), description: RowingZones.speedInterval),
       WorkoutStage(name: 'Rest', duration: Duration(minutes: 3)),
       // 250m (Done)
       WorkoutStage(name: '250m Sprint', duration: Duration(seconds: 50), description: "Empty the tank!"),
@@ -8877,7 +9846,7 @@ Workout _ppSpeed4x1000() {
     description: 'Longer speed intervals. Total: 4000m work.',
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      for (int i = 1; i <= 4; i++) ...[const WorkoutStage(name: '1000m Fast', duration: Duration(minutes: 3, seconds: 45), description: RowPace.speedInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
+      for (int i = 1; i <= 4; i++) ...[const WorkoutStage(name: '1000m Fast', duration: Duration(minutes: 3, seconds: 45), description: RowingZones.speedInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );
@@ -8891,7 +9860,7 @@ Workout _ppEndurance5x1500() {
     description: 'Endurance. Total: 7500m work.',
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      for (int i = 1; i <= 5; i++) ...[const WorkoutStage(name: '1500m Pace', duration: Duration(minutes: 6), description: RowPace.enduranceInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
+      for (int i = 1; i <= 5; i++) ...[const WorkoutStage(name: '1500m Pace', duration: Duration(minutes: 6), description: RowingZones.enduranceInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );
@@ -8903,7 +9872,7 @@ Workout _ppEndurance4x2000() {
     description: 'The classic endurance grinder. Total: 8000m work.',
     stages: [
       const WorkoutStage(name: 'Warm-up', duration: Duration(minutes: 10)),
-      for (int i = 1; i <= 4; i++) ...[const WorkoutStage(name: '2000m Pace', duration: Duration(minutes: 8), description: RowPace.enduranceInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
+      for (int i = 1; i <= 4; i++) ...[const WorkoutStage(name: '2000m Pace', duration: Duration(minutes: 8), description: RowingZones.enduranceInterval), const WorkoutStage(name: 'Rest', duration: Duration(minutes: 5), description: 'Paddle light.')],
       const WorkoutStage(name: 'Cool-down', duration: Duration(minutes: 10)),
     ],
   );
@@ -9677,6 +10646,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.1.5"
+  intl:
+    dependency: "direct main"
+    description:
+      name: intl
+      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.2"
   io:
     dependency: transitive
     description:
@@ -10347,6 +11324,7 @@ dependencies:
   lottie: ^3.3.2
   cached_network_image: ^3.3.1
   youtube_player_flutter: ^9.0.0
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -10456,10 +11434,27 @@ export 'cycling_repository.dart';
 export 'rowing_repository.dart';
 
 class WorkoutRepository {
+  // Singleton pattern
+  static final WorkoutRepository _instance = WorkoutRepository._internal();
+  factory WorkoutRepository() => _instance;
+  WorkoutRepository._internal();
+
+  // Cached plans list
+  List<TrainingPlan>? _cachedPlans;
+
+  /// Returns all available training plans.
+  /// Plans are cached after first access to improve performance.
   List<TrainingPlan> getAllPlans() {
+    _cachedPlans ??= _buildAllPlans();
+    return _cachedPlans!;
+  }
+
+  /// Builds the complete list of training plans.
+  /// This is called only once and cached.
+  List<TrainingPlan> _buildAllPlans() {
     return [
-      bicycleNetwork150kmPlan(), // NEW
-      discovery30kmBeginnerPlan(), // NEW
+      bicycleNetwork150kmPlan(),
+      discovery30kmBeginnerPlan(),
       cssFitness12WeekPlan(),
       rowingPlan(),
       insideIndoorBeginnerPlan(),
@@ -10469,6 +11464,11 @@ class WorkoutRepository {
       ellipticalHiitPlan(),
       ellipticalHillPlan(),
     ];
+  }
+
+  /// Clears the cached plans (useful for testing or if plans are updated).
+  void clearCache() {
+    _cachedPlans = null;
   }
 }
 </file>
@@ -10493,11 +11493,9 @@ class PlanBloc extends HydratedBloc<PlanEvent, PlanState> {
     });
 
     on<MarkDayAsCompleted>((event, emit) {
-      final updatedList = List<String>.from(state.completedDayIds);
-      if (!updatedList.contains(event.dayId)) {
-        updatedList.add(event.dayId);
-      }
-      emit(state.copyWith(completedDayIds: updatedList));
+      final updatedSet = Set<String>.from(state.completedDayIds);
+      updatedSet.add(event.dayId); // Set.add handles duplicates automatically
+      emit(state.copyWith(completedDayIds: updatedSet));
     });
 
     on<ResetPlanProgress>((event, emit) {
@@ -10509,8 +11507,8 @@ class PlanBloc extends HydratedBloc<PlanEvent, PlanState> {
         }
       }
 
-      // 2. Filter the current list to exclude those IDs
-      final updatedCompletedIds = state.completedDayIds.where((id) => !planDayIds.contains(id)).toList();
+      // 2. Filter the current set to exclude those IDs
+      final updatedCompletedIds = state.completedDayIds.where((id) => !planDayIds.contains(id)).toSet();
 
       // 3. Emit new state (Progress cleared, but plan remains Active)
       emit(state.copyWith(completedDayIds: updatedCompletedIds));
@@ -10567,12 +11565,25 @@ final class PlanState extends Equatable {
   // Key: WorkoutType.toString() (e.g., "WorkoutType.cycling")
   // Value: Plan ID (e.g., "bn_150km_classic")
   final Map<String, String> activePlans;
-  final List<String> completedDayIds;
 
-  const PlanState({this.activePlans = const {}, this.completedDayIds = const []});
+  /// Stores completed workout day IDs as a Set for O(1) lookup performance.
+  /// Using Set instead of List significantly improves performance when checking
+  /// if a day is completed, especially for long training plans.
+  final Set<String> completedDayIds;
 
-  PlanState copyWith({Map<String, String>? activePlans, List<String>? completedDayIds}) {
-    return PlanState(activePlans: activePlans ?? this.activePlans, completedDayIds: completedDayIds ?? this.completedDayIds);
+  const PlanState({
+    this.activePlans = const {},
+    this.completedDayIds = const {},
+  });
+
+  PlanState copyWith({
+    Map<String, String>? activePlans,
+    Set<String>? completedDayIds,
+  }) {
+    return PlanState(
+      activePlans: activePlans ?? this.activePlans,
+      completedDayIds: completedDayIds ?? this.completedDayIds,
+    );
   }
 
   // --- LOGIC: Is THIS plan the single active one for its type? ---
@@ -10585,11 +11596,17 @@ final class PlanState extends Equatable {
   List<Object?> get props => [activePlans, completedDayIds];
 
   Map<String, dynamic> toJson() {
-    return {'activePlans': activePlans, 'completedDayIds': completedDayIds};
+    return {
+      'activePlans': activePlans,
+      'completedDayIds': completedDayIds.toList(), // Convert Set to List for JSON
+    };
   }
 
   factory PlanState.fromJson(Map<String, dynamic> json) {
-    return PlanState(activePlans: Map<String, String>.from(json['activePlans'] ?? {}), completedDayIds: List<String>.from(json['completedDayIds'] ?? []));
+    return PlanState(
+      activePlans: Map<String, String>.from(json['activePlans'] ?? {}),
+      completedDayIds: Set<String>.from(json['completedDayIds'] ?? []), // Convert List to Set
+    );
   }
 }
 </file>
@@ -10643,9 +11660,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
 import 'package:mars_workout_app/core/services/audio_service.dart';
+import 'package:mars_workout_app/core/services/workout_completion_service.dart';
+import 'package:mars_workout_app/data/models/workout_history_item.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
 import 'package:mars_workout_app/data/models/workout_session.dart';
 import 'package:mars_workout_app/data/repositories/workouts/workout_repository.dart';
+import 'package:mars_workout_app/logic/bloc/history/history_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/plan/plan_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/timer/timer_bloc.dart';
 import 'package:mars_workout_app/logic/bloc/workout_session/workout_session_bloc.dart';
@@ -10688,7 +11708,7 @@ class _WorkoutPageState extends State<WorkoutPage> with WidgetsBindingObserver {
 
   void _saveWorkoutSession() {
     final timerState = context.read<TimerBloc>().state;
-    
+
     // Only save if workout is not finished
     if (!timerState.isFinished) {
       final session = WorkoutSession(
@@ -10700,93 +11720,105 @@ class _WorkoutPageState extends State<WorkoutPage> with WidgetsBindingObserver {
         isRunning: timerState.isRunning,
         savedAt: DateTime.now(),
       );
-      
+
       context.read<WorkoutSessionBloc>().add(SaveWorkoutSession(session));
+    } else {
+      // If workout is finished, ensure session is cleared
+      context.read<WorkoutSessionBloc>().add(const ClearWorkoutSession());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Cache plans once to avoid repeated expensive calls
     final allPlans = WorkoutRepository().getAllPlans();
 
     return MultiBlocListener(
-        listeners: [
-          // Save workout state periodically during workout
-          BlocListener<TimerBloc, TimerState>(
-            listenWhen: (previous, current) {
-              // Save every 5 seconds or when stage changes
-              return current.elapsed.inSeconds % 5 == 0 || 
-                     previous.currentStageIndex != current.currentStageIndex;
-            },
-            listener: (context, state) {
-              if (!state.isFinished) {
-                _saveWorkoutSession();
-              }
-            },
-          ),
-          // Handle workout completion
-          BlocListener<TimerBloc, TimerState>(
-            listener: (context, state) {
-              // 2. Workout Finished Logic
-              if (state.isFinished) {
-            // Clear the saved session since workout is complete
+      listeners: [
+        // Progress Auto-saver
+        BlocListener<TimerBloc, TimerState>(
+          listenWhen: (previous, current) {
+            return current.elapsed.inSeconds % 5 == 0 ||
+                previous.currentStageIndex != current.currentStageIndex;
+          },
+          listener: (context, state) {
+            if (!state.isFinished) {
+              _saveWorkoutSession();
+            } else {
+              context.read<WorkoutSessionBloc>().add(const ClearWorkoutSession());
+            }
+          },
+        ),
+
+        // COMPLETION HANDLER: This is where we ensure the session is cleared
+        BlocListener<TimerBloc, TimerState>(
+          listenWhen: (previous, current) =>
+          !previous.isFinished && current.isFinished,
+          listener: (context, state) {
+
+            final totalMins = widget.workout.stages.fold(0, (sum, s) => sum + s.duration.inMinutes);
             context.read<WorkoutSessionBloc>().add(const ClearWorkoutSession());
-            
+
+            context.read<HistoryBloc>().add(
+              AddWorkoutToHistory(
+                WorkoutHistoryItem(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  workoutTitle: widget.workout.title,
+                  type: widget.workoutType,
+                  completedAt: DateTime.now(),
+                  totalMinutes: totalMins,
+                ),
+              ),
+            );
+            // 1. IMMEDIATELY purge the persistent session from memory and disk
+
+            // 2. Process Plan Progress
             context.read<PlanBloc>().add(MarkDayAsCompleted(widget.planDayId));
 
+            // 3. Determine Completion Sound
             final planBlocState = context.read<PlanBloc>().state;
-            final completedIds = Set<String>.from(planBlocState.completedDayIds);
-            completedIds.add(widget.planDayId);
+            final completedIds = Set<String>.from(planBlocState.completedDayIds)
+              ..add(widget.planDayId);
 
-            bool isWeekFinished = false;
-            bool isPlanFinished = false;
+            final activePlanId =
+            planBlocState.activePlans[widget.workoutType.toString()];
 
-            // --- FIX: Get the active plan ID for THIS workout type ---
-            String? activePlanId = planBlocState.activePlans[widget.workoutType.toString()];
+            final completionStatus = WorkoutCompletionService().checkCompletion(
+              completedDayId: widget.planDayId,
+              completedDayIds: completedIds,
+              allPlans: allPlans,
+              workoutType: widget.workoutType,
+              activePlanId: activePlanId,
+            );
 
-            if (activePlanId != null) {
-              try {
-                final currentPlan = allPlans.firstWhere((p) => p.id == activePlanId);
-
-                isPlanFinished = currentPlan.weeks.every((week) => week.days.every((day) => completedIds.contains(day.id)));
-
-                if (!isPlanFinished) {
-                  for (var week in currentPlan.weeks) {
-                    if (week.days.any((d) => d.id == widget.planDayId)) {
-                      isWeekFinished = week.days.every((d) => completedIds.contains(d.id));
-                      break;
-                    }
-                  }
-                  if (isWeekFinished) {
-                    SoundService().playWeekComplete();
-                  } else {
-                    SoundService().playWorkoutComplete();
-                  }
-                } else {
-                  SoundService().playTrainingPlanComplete();
-                }
-              } catch (e) {
-                print("Plan lookup error: $e");
-              }
+            // Play sound
+            if (completionStatus.isPlanComplete) {
+              SoundService().playTrainingPlanComplete();
+            } else if (completionStatus.isWeekComplete) {
+              SoundService().playWeekComplete();
+            } else {
+              SoundService().playWorkoutComplete();
             }
 
-            int totalMins = 0;
-            for (var s in widget.workout.stages) {
-              totalMins += s.duration.inMinutes;
-            }
-
+            // 4. Navigate to Completion Screen
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => WorkoutCompletedScreen(workoutTitle: widget.workout.title, totalMinutes: totalMins, isWeekComplete: isWeekFinished, isPlanComplete: isPlanFinished),
+                builder: (_) => WorkoutCompletedScreen(
+                  workoutTitle: widget.workout.title,
+                  totalMinutes: totalMins,
+                  isWeekComplete: completionStatus.isWeekComplete,
+                  isPlanComplete: completionStatus.isPlanComplete,
+                ),
               ),
             );
-              }
-            },
-          ),
+          },
+        ),
       ],
-      child: WorkoutScreen(workout: widget.workout, planDayId: widget.planDayId, workoutType: widget.workoutType),
+      child: WorkoutScreen(
+        workout: widget.workout,
+        planDayId: widget.planDayId,
+        workoutType: widget.workoutType,
+      ),
     );
   }
 }
@@ -10878,6 +11910,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
 <file path="lib/presentation/screens/home_screen/home_screen.dart">
 import 'package:flutter/material.dart';
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
+import 'package:mars_workout_app/presentation/screens/home_screen/history/history_screen.dart';
 import 'package:mars_workout_app/presentation/screens/home_screen/plan_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -10886,7 +11919,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: WorkoutType.values.length - 1,
+      length: WorkoutType.values.length,
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Mars Workout"),
@@ -10896,6 +11929,7 @@ class HomeScreen extends StatelessWidget {
               Tab(icon: Icon(Icons.directions_bike), text: "Cycle"),
               Tab(icon: Icon(Icons.rowing), text: "Row"),
               Tab(icon: Icon(Icons.directions_run), text: "Elliptical"),
+              Tab(icon: Icon(Icons.timer_outlined), text: "History"),
             ],
           ),
         ),
@@ -10905,6 +11939,7 @@ class HomeScreen extends StatelessWidget {
               PlanListScreen(workoutType: WorkoutType.cycling),
               PlanListScreen(workoutType: WorkoutType.rowing),
               PlanListScreen(workoutType: WorkoutType.elliptical),
+              HistoryScreen(),
             ],
           ),
         ),
@@ -10915,8 +11950,9 @@ class HomeScreen extends StatelessWidget {
 </file>
 
 <file path="lib/presentation/screens/workout/workout_screen.dart">
-import 'dart:ui';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
@@ -10943,12 +11979,40 @@ class WorkoutScreen extends StatefulWidget {
   State<WorkoutScreen> createState() => _WorkoutScreenState();
 }
 
-class _WorkoutScreenState extends State<WorkoutScreen> {
+class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserver {
   static const Duration _youtubeThreshold = Duration(minutes: 10);
+  static const platform = MethodChannel('com.example.mars_workout_app/pip');
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    WakelockPlus.disable();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Attempt to enter PiP when app is backgrounded
+    if (state == AppLifecycleState.paused) {
+      _enterPictureInPicture();
+    }
+  }
+
+  Future<void> _enterPictureInPicture() async {
+    if (Platform.isAndroid) {
+      try {
+        await platform.invokeMethod('enterPiP');
+      } on PlatformException catch (_) {
+        // PiP not supported on this device/version
+      }
+    }
   }
 
   void _preloadNextGif(BuildContext context, int currentIndex) {
@@ -10956,19 +12020,60 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     if (currentIndex < widget.workout.stages.length - 1) {
       final nextStage = widget.workout.stages[currentIndex + 1];
       final nextGifUrl = GifRepository.getGifUrl(widget.workoutType, nextStage.name);
-      // Preload the next GIF
       precacheImage(NetworkImage(nextGifUrl), context);
     }
   }
 
   @override
-  void dispose() {
-    WakelockPlus.disable();
-    super.dispose();
+  Widget build(BuildContext context) {
+    // --- (b) PiP / Background Widget Detection ---
+    // If the window height is very small, we are likely in PiP mode.
+    final size = MediaQuery.of(context).size;
+    if (size.height < 300) {
+      return _buildPipLayout(context);
+    }
+
+    return _buildStandardLayout(context);
   }
 
-  @override
-  Widget build(BuildContext context) {
+  // --- (b) The simplified widget for background/PiP view ---
+  Widget _buildPipLayout(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: BlocBuilder<TimerBloc, TimerState>(
+          builder: (context, state) {
+            final isCountdown = WorkoutHelper.isCountdownStage(state.currentStage);
+            final maxDuration = state.currentStage.duration;
+            final remaining = maxDuration - state.elapsed;
+            final secondsDisplay = remaining.inSeconds < 0 ? 0 : remaining.inSeconds;
+
+            final textColor = isCountdown ? Colors.orange : Colors.white;
+
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  state.currentStage.name,
+                  style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${(secondsDisplay / 60).floor().toString().padLeft(2, '0')}:${(secondsDisplay % 60).toString().padLeft(2, '0')}',
+                  style: TextStyle(color: textColor, fontSize: 32, fontWeight: FontWeight.bold),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStandardLayout(BuildContext context) {
     final theme = Theme.of(context);
     final totalDuration = widget.workout.stages.fold(Duration.zero, (prev, element) => prev + element.duration);
     final useYoutube = totalDuration > _youtubeThreshold;
@@ -10977,13 +12082,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        
-        // Save workout state before exiting
         final timerState = context.read<TimerBloc>().state;
         if (!timerState.isFinished) {
           final shouldExit = await _showExitConfirmation(context);
           if (shouldExit == true) {
-            // Save the session
             final session = WorkoutSession(
               workout: widget.workout,
               planDayId: widget.planDayId,
@@ -11018,48 +12120,39 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         child: RepaintBoundary(
                           child: useYoutube
                               ? WorkoutVideoSection(
-                                  workout: widget.workout,
-                                  planDayId: widget.planDayId,
-                                  workoutType: widget.workoutType,
-                                )
+                            workout: widget.workout,
+                            planDayId: widget.planDayId,
+                            workoutType: widget.workoutType,
+                          )
                               : BlocBuilder<TimerBloc, TimerState>(
-                                  buildWhen: (previous, current) => previous.currentStageIndex != current.currentStageIndex,
-                                  builder: (context, state) {
-                                    // Check if current stage is a countdown
-                                    final isCountdown = WorkoutHelper.isCountdownStage(state.currentStage);
-                                    
-                                    if (isCountdown) {
-                                      // Show countdown overlay for "Get Ready" stages
-                                      return _buildCountdownOverlay(context, state);
-                                    }
-                                    
-                                    final gifUrl = GifRepository.getGifUrl(widget.workoutType, state.currentStage.name);
+                            buildWhen: (previous, current) => previous.currentStageIndex != current.currentStageIndex,
+                            builder: (context, state) {
+                              final isCountdown = WorkoutHelper.isCountdownStage(state.currentStage);
+                              if (isCountdown) {
+                                return _buildCountdownOverlay(context, state);
+                              }
+                              final gifUrl = GifRepository.getGifUrl(widget.workoutType, state.currentStage.name);
+                              WidgetsBinding.instance.addPostFrameCallback((_) => _preloadNextGif(context, state.currentStageIndex));
 
-                                    // Preload next stage GIF when stage changes
-                                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                                      _preloadNextGif(context, state.currentStageIndex);
-                                    });
-
-                                    return Container(
-                                      width: double.infinity,
-                                      color: Colors.grey.shade100,
-                                      child: CachedNetworkImage(
-                                        imageUrl: gifUrl,
-                                        fit: BoxFit.contain,
-                                        placeholder: (context, url) => Center(child: CircularProgressIndicator(color: theme.primaryColor)),
-                                        errorWidget: (context, url, error) => Center(child: Icon(Icons.fitness_center, size: 64, color: Colors.grey.shade100)),
-                                        memCacheWidth: 800,
-                                        memCacheHeight: 800,
-                                      ),
-                                    );
-                                  },
+                              return Container(
+                                width: double.infinity,
+                                color: Colors.grey.shade100,
+                                child: CachedNetworkImage(
+                                  imageUrl: gifUrl,
+                                  fit: BoxFit.contain,
+                                  placeholder: (context, url) => Center(child: CircularProgressIndicator(color: theme.primaryColor)),
+                                  errorWidget: (context, url, error) => Center(child: Icon(Icons.fitness_center, size: 64, color: Colors.grey.shade100)),
+                                  memCacheWidth: 800,
+                                  memCacheHeight: 800,
                                 ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                          clipBehavior: Clip.antiAlias,
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surface,
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
@@ -11088,11 +12181,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Widget _buildCountdownOverlay(BuildContext context, TimerState state) {
+    // ... Keep your existing countdown overlay code exactly as it was ...
+    // Assuming standard implementation from previous Repomix context
     final theme = Theme.of(context);
     final timeLeft = state.currentStage.duration - state.elapsed;
     final secondsDisplay = timeLeft.inSeconds < 0 ? 0 : timeLeft.inSeconds;
-    final progress = state.currentStage.duration.inMilliseconds > 0 
-        ? state.elapsed.inMilliseconds / state.currentStage.duration.inMilliseconds 
+    final progress = state.currentStage.duration.inMilliseconds > 0
+        ? state.elapsed.inMilliseconds / state.currentStage.duration.inMilliseconds
         : 0.0;
 
     return Container(
@@ -11102,79 +12197,24 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            "GET READY",
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: Colors.orange,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 3.0,
-            ),
-          ),
+          Text("GET READY", style: theme.textTheme.headlineMedium?.copyWith(color: Colors.orange, fontWeight: FontWeight.bold, letterSpacing: 3.0)),
           const SizedBox(height: 40),
-          // Big Circular Countdown
           SizedBox(
-            width: 200,
-            height: 200,
+            width: 200, height: 200,
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Background Circle
-                SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: 1.0,
-                    strokeWidth: 15,
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
-                ),
-                // Animated Foreground Circle
-                SizedBox.expand(
-                  child: TweenAnimationBuilder<double>(
-                    key: ValueKey(state.currentStageIndex),
-                    tween: Tween<double>(begin: 0.0, end: progress),
-                    duration: const Duration(milliseconds: 1000),
-                    builder: (context, value, _) => CircularProgressIndicator(
-                      value: value,
-                      strokeWidth: 15,
-                      color: Colors.orange,
-                      strokeCap: StrokeCap.round,
-                    ),
-                  ),
-                ),
-                // The Number
-                Text(
-                  "$secondsDisplay",
-                  style: const TextStyle(
-                    fontSize: 90,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                  ),
-                ),
+                SizedBox.expand(child: CircularProgressIndicator(value: 1.0, strokeWidth: 15, color: Colors.white.withValues(alpha: 0.1))),
+                SizedBox.expand(child: TweenAnimationBuilder<double>(key: ValueKey(state.currentStageIndex), tween: Tween<double>(begin: 0.0, end: progress), duration: const Duration(milliseconds: 1000), builder: (context, value, _) => CircularProgressIndicator(value: value, strokeWidth: 15, color: Colors.orange, strokeCap: StrokeCap.round))),
+                Text("$secondsDisplay", style: const TextStyle(fontSize: 90, fontWeight: FontWeight.bold, color: Colors.white, fontFeatures: [FontFeature.tabularFigures()])),
               ],
             ),
           ),
           const SizedBox(height: 50),
-          // Next stage info
           if (state.currentStage.description.isNotEmpty) ...[
-            Text(
-              "NEXT UP:",
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: Colors.white54,
-                letterSpacing: 1.2,
-              ),
-            ),
+            Text("NEXT UP:", style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54, letterSpacing: 1.2)),
             const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: Text(
-                state.currentStage.description.replaceFirst('Next: ', ''),
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 32.0), child: Text(state.currentStage.description.replaceFirst('Next: ', ''), textAlign: TextAlign.center, style: theme.textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w600))),
           ],
         ],
       ),
@@ -11187,19 +12227,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Exit Workout?'),
-        content: const Text(
-          'Your progress will be saved and you can resume this workout later.',
-        ),
+        content: const Text('Your progress will be saved and you can resume this workout later.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
+            style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             child: const Text('Exit & Save'),
           ),
         ],
@@ -11261,6 +12294,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:mars_workout_app/core/services/audio_service.dart';
 import 'package:mars_workout_app/core/theme/app_theme.dart';
+import 'package:mars_workout_app/logic/bloc/history/history_bloc.dart';
 import 'package:mars_workout_app/presentation/screens/home_screen/home_page.dart';
 import 'package:mars_workout_app/presentation/widgets/resume_workout_dialog.dart';
 import 'package:path_provider/path_provider.dart';
@@ -11275,7 +12309,6 @@ void main() async {
   ]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  // 2. MAKE SYSTEM BARS TRANSPARENT
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.dark, systemNavigationBarColor: Colors.transparent, systemNavigationBarIconBrightness: Brightness.dark));
   HydratedBloc.storage = await HydratedStorage.build(storageDirectory: await getApplicationDocumentsDirectory());
   await SoundService().init();
@@ -11291,6 +12324,7 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => PlanBloc()),
         BlocProvider(create: (_) => WorkoutSessionBloc()),
+        BlocProvider(create: (_) => HistoryBloc()),
       ],
       child: MaterialApp(
         title: 'Workout Planner',
@@ -11318,17 +12352,38 @@ class _HomePageWithResumeCheckState extends State<HomePageWithResumeCheck> {
     super.initState();
     // Check for saved workout session after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncHistoryWithPlanProgress();
       _checkForSavedWorkout();
     });
   }
 
+  void _syncHistoryWithPlanProgress() {
+    final completedIds = context.read<PlanBloc>().state.completedDayIds;
+    if (completedIds.isNotEmpty) {
+      context.read<HistoryBloc>().add(SyncCompletedWorkouts(completedIds));
+    }
+  }
+
   void _checkForSavedWorkout() {
-    final sessionState = context.read<WorkoutSessionBloc>().state;
+    final sessionBloc = context.read<WorkoutSessionBloc>();
+    final sessionState = sessionBloc.state;
+
     if (sessionState.hasSession && sessionState.session != null) {
+      final session = sessionState.session!;
+
+      // LOGIC FIX: If the session says it's finished, or it's old,
+      // kill it immediately and don't show the dialog.
+      if (session.isWorkoutFinished() || !session.isValid()) {
+        sessionBloc.add(const ClearWorkoutSession());
+        debugPrint("🧹 Startup Cleanup: Removed a finished/invalid session.");
+        return;
+      }
+
+      // Only if it's genuinely "In Progress" do we show the dialog
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => ResumeWorkoutDialog(session: sessionState.session!),
+        builder: (context) => ResumeWorkoutDialog(session: session),
       );
     }
   }

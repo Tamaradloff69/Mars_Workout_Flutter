@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mars_workout_app/core/constants/enums/workout_type.dart';
 import 'package:mars_workout_app/data/models/workout_model.dart';
-import 'package:mars_workout_app/data/repositories/misc/video_repository.dart';
 import 'package:mars_workout_app/logic/bloc/timer/timer_bloc.dart';
 import 'package:mars_workout_app/logic/cubit/workout_video_cubit.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -203,17 +202,15 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Watch cubit for changes
+    // Watch cubit for user-saved input
     final videoCubit = context.watch<WorkoutVideoCubit>();
     final savedVideoInput = videoCubit.getVideoForSession(_sessionKey);
-    final fallbackVideoId = VideoRepository.getYoutubeVideoId(widget.workoutType);
 
-    // Decide source
-    final inputToUse = (savedVideoInput?.isNotEmpty == true)
-        ? savedVideoInput
-        : (fallbackVideoId != null ? 'https://youtu.be/$fallbackVideoId' : null);
+    // CHANGE: Set inputToUse to ONLY the saved input, with no fallback
+    // This ensures the player starts blank as requested.
+    final inputToUse = (savedVideoInput?.isNotEmpty == true) ? savedVideoInput : null;
 
-    // Initialize/Update Controller
+    // Initialize/Update Controller with the blank or user-provided input
     _ensureYoutubeController(inputToUse);
 
     final bool hasPlayer = _youtubeController != null;
@@ -276,7 +273,7 @@ class _WorkoutVideoSectionState extends State<WorkoutVideoSection> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () => _promptForVideo(initialValue: savedVideoInput),
-                  icon: const Icon(Icons.edit),
+                  icon: const Icon(Icons.add_link_rounded), // Updated icon for "blank" state
                   label: Text(hasPlayer ? 'Change content' : 'Set content'),
                 ),
                 const SizedBox(width: 12),
